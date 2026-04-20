@@ -190,7 +190,8 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
 
 def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id: str):
     """Core backtest simulation logic."""
-    from scan_engine.indicator_engine import compute_indicators, compute_signals
+    from scan_engine.indicator_engine import compute_indicators
+    from scan_engine.signal_engine import compute_buy_signals, compute_exit_signals
     import pandas as pd
 
     capital = req.starting_capital
@@ -231,7 +232,8 @@ def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id
                 raw = fetch_ohlcv_yfinance(ticker, from_d, to_d)
                 if raw is not None and not raw.empty:
                     raw = compute_indicators(raw)
-                    raw = compute_signals(raw)
+                    raw = compute_buy_signals(raw)
+                    raw = compute_exit_signals(raw)
                     prices = raw[raw["date"].astype(str) >= req.from_date].to_dict("records")
             except Exception as e:
                 logger.warning(f"Backtest yfinance fallback failed for {ticker}: {e}")
