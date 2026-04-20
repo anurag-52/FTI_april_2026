@@ -233,7 +233,7 @@ def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id
                 from datetime import timedelta
                 from_d = date.fromisoformat(req.from_date) - timedelta(days=120)
                 to_d = date.fromisoformat(req.to_date)
-                raw = fetch_ohlcv_yfinance(ticker, from_d, to_d)
+                raw = fetch_ohlcv_yfinance(ticker, None, from_d, to_d)
                 if raw is not None and not raw.empty:
                     raw = compute_indicators(raw)
                     raw = compute_buy_signals(raw)
