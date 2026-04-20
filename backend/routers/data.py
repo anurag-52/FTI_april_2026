@@ -38,7 +38,7 @@ async def get_data_status(user=Depends(get_current_user)):
     holiday = supabase.table("market_holidays") \
         .select("holiday_name") \
         .eq("holiday_date", today) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     # Get recent data source logs (last 24 hrs)

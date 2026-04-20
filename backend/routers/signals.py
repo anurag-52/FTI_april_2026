@@ -37,7 +37,7 @@ async def get_signals_today(user=Depends(get_current_user)):
         .select("*") \
         .eq("user_id", user["id"]) \
         .eq("signal_date", today) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not session:
@@ -118,7 +118,7 @@ async def submit_confirmations(req: ConfirmRequest, user=Depends(get_current_use
         .select("*") \
         .eq("session_token", req.session_token) \
         .eq("user_id", user["id"]) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not session:
@@ -137,7 +137,7 @@ async def get_session_by_token(token: str):
     session = supabase.table("notification_sessions") \
         .select("*") \
         .eq("session_token", token) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not session:
@@ -209,7 +209,7 @@ async def submit_by_token(token: str, req: TokenConfirmRequest):
     session = supabase.table("notification_sessions") \
         .select("*") \
         .eq("session_token", token) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not session:
@@ -247,7 +247,7 @@ async def _process_confirmations(session: dict, confirmations: list, user_id: st
             .select("*") \
             .eq("id", item.signal_id) \
             .eq("user_id", user_id) \
-            .maybeSingle() \
+            .maybe_single() \
             .execute().data
 
         if not signal:

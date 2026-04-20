@@ -55,7 +55,7 @@ async def login(req: LoginRequest):
     refresh_token = auth_data.get("refresh_token")
 
     # Load user from our table
-    result = supabase.table("users").select("*").eq("email", req.email).maybeSingle().execute()
+    result = supabase.table("users").select("*").eq("email", req.email).maybe_single().execute()
     if not result.data:
         raise HTTPException(status_code=401, detail="User not found in system")
 

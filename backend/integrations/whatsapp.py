@@ -28,7 +28,7 @@ def _get_msg91_creds():
     api_key_env = os.getenv("MSG91_API_KEY", "")
     sender_id_env = os.getenv("MSG91_SENDER_ID", "")
     try:
-        res = supabase.table("system_settings").select("msg91_api_key, msg91_sender_id").eq("id", "global").maybeSingle().execute()
+        res = supabase.table("system_settings").select("msg91_api_key, msg91_sender_id").eq("id", "global").maybe_single().execute()
         if res.data:
             api_key = res.data.get("msg91_api_key") or api_key_env
             sender_id = res.data.get("msg91_sender_id") or sender_id_env

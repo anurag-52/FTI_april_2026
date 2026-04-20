@@ -108,7 +108,7 @@ async def get_positions(user=Depends(get_current_user)):
         .select("session_token, submitted") \
         .eq("user_id", user_id) \
         .eq("signal_date", today_str) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     return {
@@ -134,7 +134,7 @@ async def add_manual_buy(req: ManualBuyRequest, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid quantity or price")
 
     # Validate stock exists
-    stock = supabase.table("stocks").select("id, ticker_nse").eq("id", req.stock_id).maybeSingle().execute()
+    stock = supabase.table("stocks").select("id, ticker_nse").eq("id", req.stock_id).maybe_single().execute()
     if not stock.data:
         raise HTTPException(status_code=404, detail="Stock not found")
 
@@ -194,7 +194,7 @@ async def add_manual_sell(req: ManualSellRequest, user=Depends(get_current_user)
         .eq("id", req.position_id) \
         .eq("user_id", user["id"]) \
         .eq("status", "open") \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not pos:

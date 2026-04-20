@@ -29,7 +29,7 @@ def _get_resend_creds():
     api_key_env = os.getenv("RESEND_API_KEY", "")
     from_email_env = os.getenv("RESEND_FROM_EMAIL", "signals@yourdomain.com")
     try:
-        res = supabase.table("system_settings").select("resend_api_key, resend_from_email").eq("id", "global").maybeSingle().execute()
+        res = supabase.table("system_settings").select("resend_api_key, resend_from_email").eq("id", "global").maybe_single().execute()
         if res.data:
             api_key = res.data.get("resend_api_key") or api_key_env
             from_email = res.data.get("resend_from_email") or from_email_env

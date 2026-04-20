@@ -66,7 +66,7 @@ def _gen_temp_password(length: int = 12) -> str:
 async def create_user(req: CreateUserRequest, admin=Depends(get_admin_user)):
     """Create a new trader account. Generates temp password + sends welcome email."""
     # Check email not already in use
-    existing = supabase.table("users").select("id").eq("email", req.email).maybeSingle().execute()
+    existing = supabase.table("users").select("id").eq("email", req.email).maybe_single().execute()
     if existing.data:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -158,7 +158,7 @@ async def get_users(admin=Depends(get_admin_user)):
 @router.get("/admin/users/{user_id}")
 async def get_user_detail(user_id: str, admin=Depends(get_admin_user)):
     """Get full user detail with positions, signals, watchlist, capital log."""
-    user = supabase.table("users").select("*").eq("id", user_id).maybeSingle().execute().data
+    user = supabase.table("users").select("*").eq("id", user_id).maybe_single().execute().data
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -223,7 +223,7 @@ async def update_user(user_id: str, req: UpdateUserRequest, admin=Depends(get_ad
 
     # Load current user for capital change logging
     if "starting_capital" in updates or "available_capital" in updates:
-        current = supabase.table("users").select("starting_capital, available_capital").eq("id", user_id).maybeSingle().execute().data
+        current = supabase.table("users").select("starting_capital, available_capital").eq("id", user_id).maybe_single().execute().data
         if not current:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -253,7 +253,7 @@ async def admin_confirm_signals(user_id: str, req: AdminConfirmRequest, admin=De
     Same logic as trader confirmation, but triggered by admin.
     """
     # Verify target user exists
-    target_user = supabase.table("users").select("*").eq("id", user_id).maybeSingle().execute().data
+    target_user = supabase.table("users").select("*").eq("id", user_id).maybe_single().execute().data
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -263,7 +263,7 @@ async def admin_confirm_signals(user_id: str, req: AdminConfirmRequest, admin=De
         .select("*") \
         .eq("user_id", user_id) \
         .eq("signal_date", today) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not session:
@@ -289,7 +289,7 @@ class UpdateSettingsRequest(BaseModel):
 @router.get("/admin/settings")
 async def get_system_settings(admin=Depends(get_admin_user)):
     """Fetch global system settings (integrations API keys)."""
-    result = supabase.table("system_settings").select("*").eq("id", "global").maybeSingle().execute()
+    result = supabase.table("system_settings").select("*").eq("id", "global").maybe_single().execute()
     if not result.data:
         # DB returns None if empty, return empty dict or defaults
         return {}

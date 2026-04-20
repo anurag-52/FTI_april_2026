@@ -79,7 +79,7 @@ def is_trading_day(check_date: date = None) -> bool:
     result = supabase.table("market_holidays") \
         .select("holiday_name") \
         .eq("holiday_date", str(check_date)) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute()
 
     return result.data is None  # True if NOT a holiday

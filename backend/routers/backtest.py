@@ -72,7 +72,7 @@ async def get_backtest_result(run_id: str, user=Depends(get_current_user)):
         .select("*") \
         .eq("id", run_id) \
         .eq("user_id", user["id"]) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute().data
 
     if not result:

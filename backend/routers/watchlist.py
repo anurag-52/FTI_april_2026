@@ -86,7 +86,7 @@ async def add_to_watchlist(
     stock = supabase.table("stocks") \
         .select("id, ticker_nse, company_name, is_suspended, history_fetched") \
         .eq("id", req.stock_id) \
-        .maybeSingle() \
+        .maybe_single() \
         .execute()
     if not stock.data:
         raise HTTPException(status_code=404, detail="Stock not found")
