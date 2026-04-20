@@ -88,6 +88,8 @@ async def get_backtest_result(run_id: str, user=Depends(get_current_user)):
         .eq("backtest_id", run_id) \
         .order("trade_date") \
         .execute().data or []
+        
+    return {**result, "status": "completed", "trades": trades}
 
 @router.get("/backtest/{run_id}/daily-log")
 async def get_backtest_daily_log(run_id: str, user=Depends(get_current_user)):
