@@ -104,18 +104,27 @@ async def get_positions(user=Depends(get_current_user)):
 
     # Get today's session token if exists
     today_str = str(date.today())
-    session = supabase.table("notification_sessions") \
+    session_data = supabase.table("notification_sessions") \
         .select("session_token, submitted") \
         .eq("user_id", user_id) \
         .eq("signal_date", today_str) \
         .maybe_single() \
         .execute().data
 
+    session_token = None
+    session_submitted = None
+    if session_data and isinstance(session_data, dict):
+        session_token = session_data.get("session_token")
+        session_submitted = session_data.get("submitted")
+    elif session_data and isinstance(session_data, list) and len(session_data) > 0:
+        session_token = session_data[0].get("session_token")
+        session_submitted = session_data[0].get("submitted")
+
     return {
         "open": open_positions,
         "closed": closed_positions,
-        "session_token": session["session_token"] if session else None,
-        "session_submitted": session["submitted"] if session else None,
+        "session_token": session_token,
+        "session_submitted": session_submitted,
         "summary": {
             "total_invested": round(total_invested, 2),
             "total_current_value": round(total_current_value, 2),
