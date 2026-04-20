@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react'
 // Shared UI components
 
 // Loading spinner
@@ -27,7 +28,7 @@ export function StatusBadge({ status }) {
     paused:    'badge-paused',
     suspended: 'badge-suspended',
   }[status] || 'badge-active'
-  const dot = { active: '🟢', paused: '🟡', suspended: '🔴' }[status] || '⚪'
+  const dot = { active: <div className="w-2 h-2 rounded-full bg-success inline-block"/>, paused: <div className="w-2 h-2 rounded-full bg-warning inline-block"/>, suspended: <div className="w-2 h-2 rounded-full bg-danger inline-block"/> }[status] || <div className="w-2 h-2 rounded-full bg-gray-300 inline-block"/>
   return <span className={cls}>{dot} {status?.charAt(0).toUpperCase() + status?.slice(1)}</span>
 }
 
@@ -36,7 +37,7 @@ export function CircuitBadge({ type }) {
   if (!type) return null
   return (
     <span className="badge-warning">
-      ⚠️ {type === 'UPPER' ? 'Upper Circuit' : 'Lower Circuit'}
+      <AlertTriangle className="w-5 h-5 inline-block" /> {type === 'UPPER' ? 'Upper Circuit' : 'Lower Circuit'}
     </span>
   )
 }
@@ -46,7 +47,7 @@ export function GapRiskBadge({ pct }) {
   if (!pct) return null
   return (
     <span className="badge-warning">
-      ⚠️ Gap Risk: {pct?.toFixed(1)}% gap down
+      <AlertTriangle className="w-5 h-5 inline-block" /> Gap Risk: {pct?.toFixed(1)}% gap down
     </span>
   )
 }

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../components/Navigation'
 import { PageHeader, rupee, PnL, LoadingSpinner, StatCard, EmptyState } from '../components/UI'
 import { getPositions } from '../api/client'
+import { LineChart } from 'lucide-react'
+
 
 export default function PortfolioPage() {
   const [data, setData] = useState(null)
@@ -73,7 +75,7 @@ export default function PortfolioPage() {
       {!loading && tab === 'open' && (
         <div className="px-4 space-y-3">
           {open.length === 0 && (
-            <EmptyState icon="📊" title="No open positions"
+            <EmptyState icon={<LineChart className="w-10 h-10 text-muted" />} title="No open positions"
               subtitle="Buy signals will appear here once confirmed"
               action={<Link to="/watchlist" className="btn-outline !w-auto px-6">Manage Watchlist</Link>}
             />

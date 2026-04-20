@@ -1,18 +1,20 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3 } from 'lucide-react'
+
 
 const traderTabs = [
-  { to: '/dashboard',  icon: '🏠', label: 'Home' },
-  { to: '/portfolio',  icon: '📊', label: 'Portfolio' },
-  { to: '/watchlist',  icon: '🔍', label: 'Watchlist' },
-  { to: '/backtest',   icon: '📈', label: 'Backtest' },
-  { to: '/profile',    icon: '👤', label: 'Profile' },
+  { to: '/dashboard',  icon: LayoutDashboard, label: 'Home' },
+  { to: '/portfolio',  icon: LineChart, label: 'Portfolio' },
+  { to: '/watchlist',  icon: Search, label: 'Watchlist' },
+  { to: '/backtest',   icon: TrendingUp, label: 'Backtest' },
+  { to: '/profile',    icon: User, label: 'Profile' },
 ]
 
 const adminTabs = [
-  { to: '/admin/users',   icon: '👥', label: 'Users' },
-  { to: '/admin/system',  icon: '⚙️', label: 'System' },
-  { to: '/admin/profile', icon: '👤', label: 'Profile' },
+  { to: '/admin/users',   icon: Users, label: 'Users' },
+  { to: '/admin/system',  icon: Settings, label: 'System' },
+  { to: '/admin/profile', icon: User, label: 'Profile' },
 ]
 
 // Bottom tab bar — mobile only
@@ -31,7 +33,7 @@ export function BottomTabBar() {
                ${isActive ? 'text-brand' : 'text-muted'}`
             }
           >
-            <span className="text-lg leading-none">{tab.icon}</span>
+            <span className="text-lg leading-none"><tab.icon className="w-5 h-5 mx-auto" strokeWidth={1.5} /></span>
             <span>{tab.label}</span>
           </NavLink>
         ))}
@@ -49,7 +51,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-border">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">📊</span>
+          <span className="text-brand"><BarChart3 className="w-6 h-6" strokeWidth={2} /></span>
           <div>
             <div className="font-bold text-text text-sm leading-tight">Channel Breakout</div>
             <div className="text-muted text-xs">Courtney Smith</div>
@@ -67,7 +69,7 @@ export function Sidebar() {
                ${isActive ? 'bg-brand text-white' : 'text-muted hover:bg-gray-50 hover:text-text'}`
             }
           >
-            <span className="w-5 text-center">{tab.icon}</span>
+            <span className="w-5 text-center"><tab.icon className="w-5 h-5" strokeWidth={1.5} /></span>
             {tab.label}
           </NavLink>
         ))}
@@ -79,7 +81,7 @@ export function Sidebar() {
           <div className="text-xs text-muted truncate">{user?.email}</div>
         </div>
         <button onClick={logout} className="btn-ghost w-full text-left flex items-center gap-2">
-          <span>🚪</span> Logout
+          <LogOut className="w-4 h-4 ml-1" /> Logout
         </button>
       </div>
     </aside>

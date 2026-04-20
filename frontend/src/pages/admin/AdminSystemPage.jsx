@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Layout } from '../../components/Navigation'
 import { PageHeader, LoadingSpinner, rupee } from '../../components/UI'
 import { getDataStatus, triggerRefetch, getAdminUsers, getAdminSystem } from '../../api/client'
+import { RefreshCw, Hourglass, LineChart, AlertTriangle, CheckCircle2, Radio } from 'lucide-react'
+
 
 export default function AdminSystemPage() {
   const [data, setData] = useState(null)
@@ -39,7 +41,7 @@ export default function AdminSystemPage() {
         <div className="px-4 py-4 space-y-4">
           {/* Data feed status */}
           <div className="card p-4">
-            <h2 className="font-semibold text-text mb-3">📡 Data Feed</h2>
+            <h2 className="font-semibold text-text mb-3"><Radio className="w-5 h-5 inline-block" /> Data Feed</h2>
             <div className="grid grid-cols-2 gap-3 text-sm mb-4">
               <div>
                 <div className="text-xs text-muted">Last Scan</div>
@@ -65,8 +67,8 @@ export default function AdminSystemPage() {
               {['yfinance', 'nse_bhavcopy', 'bse_bhavcopy'].map(src => (
                 <button key={src} onClick={() => handleRefetch(src)}
                   disabled={!!refetching}
-                  className={`w-full btn-outline text-sm py-2 ${refetching === src ? 'opacity-50' : ''}`}>
-                  {refetching === src ? '⏳ Fetching...' : `🔄 Fetch from ${src.replace('_', ' ')}`}
+                  className={`w-full btn-outline text-sm py-2 flex items-center justify-center gap-1.5 cursor-pointer ${refetching === src ? 'opacity-50' : ''}`}>
+                  {refetching === src ? <><Hourglass className="w-4 h-4 animate-spin" /> Fetching...</> : <><RefreshCw className="w-4 h-4" /> Fetch from {src.replace('_', ' ')}</>}
                 </button>
               ))}
             </div>
@@ -74,9 +76,9 @@ export default function AdminSystemPage() {
 
           {/* Pending confirmations */}
           <div className="card p-4">
-            <h2 className="font-semibold text-text mb-3">⏳ Pending Confirmations ({pending.length})</h2>
+            <h2 className="font-semibold text-text mb-3"><Hourglass className="w-5 h-5 inline-block" /> Pending Confirmations ({pending.length})</h2>
             {pending.length === 0 ? (
-              <p className="text-muted text-sm">All traders have confirmed today's signals ✅</p>
+              <p className="text-muted text-sm flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-success" /> All traders have confirmed today's signals</p>
             ) : (
               <div className="space-y-2">
                 {pending.map(u => (
@@ -86,7 +88,7 @@ export default function AdminSystemPage() {
                       <div className="text-xs text-muted">{u.email}</div>
                     </div>
                     {u.inactivity_days > 0 && (
-                      <span className="text-xs text-danger">⚠️ Day {u.inactivity_days}</span>
+                      <span className="text-xs text-danger"><AlertTriangle className="w-5 h-5 inline-block" /> Day {u.inactivity_days}</span>
                     )}
                   </div>
                 ))}
@@ -96,13 +98,13 @@ export default function AdminSystemPage() {
 
           {/* Inactivity summary */}
           <div className="card p-4">
-            <h2 className="font-semibold text-text mb-3">📊 Trader Status</h2>
+            <h2 className="font-semibold text-text mb-3"><LineChart className="w-5 h-5 inline-block" /> Trader Status</h2>
             <div className="space-y-2 text-sm">
               {data?.users?.filter(u => u.role === 'trader').map(u => (
                 <div key={u.id} className="flex justify-between py-1.5 border-b border-border">
                   <div>
                     <span className="font-medium">{u.full_name}</span>
-                    {u.inactivity_days >= 5 && <span className="text-danger text-xs ml-2">⚠️ {u.inactivity_days}d</span>}
+                    {u.inactivity_days >= 5 && <span className="text-danger text-xs ml-2"><AlertTriangle className="w-5 h-5 inline-block" /> {u.inactivity_days}d</span>}
                   </div>
                   <span className={`text-xs font-medium ${u.status === 'active' ? 'text-success' : u.status === 'paused' ? 'text-warning' : 'text-danger'}`}>
                     {u.status}

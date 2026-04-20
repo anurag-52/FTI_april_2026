@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { Layout } from '../../components/Navigation'
 import { PageHeader, StatusBadge, ErrorMsg, LoadingSpinner, rupee, PnL } from '../../components/UI'
 import { getAdminUser, updateAdminUser } from '../../api/client'
+import { AlertTriangle, CheckCircle2, Hourglass, XCircle } from 'lucide-react'
+
 
 export default function AdminUserDetailPage() {
   const { id } = useParams()
@@ -24,7 +26,7 @@ export default function AdminUserDetailPage() {
     try {
       await updateAdminUser(id, { status })
       await load()
-      setSuccess(`Status updated to ${status} ✅`)
+      setSuccess(`Status updated to ${status} successfully`)
       setTimeout(() => setSuccess(''), 3000)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
@@ -38,7 +40,7 @@ export default function AdminUserDetailPage() {
     try {
       await updateAdminUser(id, { status: 'active', inactivity_days: 0, warned_day5: false, warned_day12: false })
       await load()
-      setSuccess('Account reactivated ✅')
+      setSuccess('Account reactivated successfully')
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
     } finally {
@@ -59,9 +61,9 @@ export default function AdminUserDetailPage() {
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
             <StatusBadge status={user?.status} />
-            {user?.inactivity_days > 0 && (
-              <span className="text-xs text-danger">⚠️ {user.inactivity_days} days inactive</span>
-            )}
+            {user?.inactivity_days > 0 ? (
+              <span className="text-xs text-danger flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {user.inactivity_days} days inactive</span>
+            ) : null}
           </div>
           {success && <div className="text-success text-sm mb-2">{success}</div>}
           <ErrorMsg msg={error} />
@@ -69,7 +71,7 @@ export default function AdminUserDetailPage() {
             {user?.status !== 'active' && (
               <button onClick={() => resetInactivity()} disabled={saving}
                 className="btn-success !w-auto px-3 py-1.5 text-sm">
-                ✅ Reactivate
+                <CheckCircle2 className="w-4 h-4 inline" /> Reactivate
               </button>
             )}
             {user?.status === 'active' && (
@@ -81,7 +83,7 @@ export default function AdminUserDetailPage() {
             {user?.status !== 'suspended' && (
               <button onClick={() => updateStatus('suspended')} disabled={saving}
                 className="btn-outline !w-auto px-3 py-1.5 text-sm !text-danger !border-danger">
-                🔴 Suspend
+                <div className="w-2 h-2 rounded-full bg-danger inline-block"/> Suspend
               </button>
             )}
           </div>
@@ -125,8 +127,8 @@ export default function AdminUserDetailPage() {
             <div className="card p-4">
               <div className="font-semibold text-sm mb-2">Notifications</div>
               <div className="text-sm space-y-1">
-                <div>Email: {user?.notify_email ? '✅ Enabled' : '❌ Disabled'}</div>
-                <div>WhatsApp: {user?.notify_whatsapp ? '✅ Enabled' : '❌ Disabled'}</div>
+                <div className="flex items-center gap-1">Email: {user?.notify_email ? <><CheckCircle2 className="w-4 h-4 text-success" /> Enabled</> : <><XCircle className="w-4 h-4 text-muted" /> Disabled</>}</div>
+                <div className="flex items-center gap-1">WhatsApp: {user?.notify_whatsapp ? <><CheckCircle2 className="w-4 h-4 text-success" /> Enabled</> : <><XCircle className="w-4 h-4 text-muted" /> Disabled</>}</div>
               </div>
             </div>
           </>
@@ -162,9 +164,9 @@ export default function AdminUserDetailPage() {
                   <div className="text-xs text-muted">{s.signal_date} · ₹{s.trigger_price?.toFixed(2)}</div>
                 </div>
                 <div className="text-right">
-                  {s.confirmed === null && <span className="text-amber-600 text-xs">⏳ Pending</span>}
-                  {s.confirmed === true && <span className="text-success text-xs">✅ Confirmed</span>}
-                  {s.confirmed === false && <span className="text-muted text-xs">❌ Skipped</span>}
+                  {s.confirmed === null ? <span className="text-amber-600 text-xs flex items-center gap-0.5"><Hourglass className="w-3.5 h-3.5" /> Pending</span> : null}
+                  {s.confirmed === true ? <span className="text-success text-xs flex items-center gap-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmed</span> : null}
+                  {s.confirmed === false ? <span className="text-muted text-xs flex items-center gap-0.5"><XCircle className="w-3.5 h-3.5" /> Skipped</span> : null}
                 </div>
               </div>
             ))}

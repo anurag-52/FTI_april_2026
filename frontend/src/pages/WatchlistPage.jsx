@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Layout } from '../components/Navigation'
 import { PageHeader, EmptyState, ErrorMsg, LoadingSpinner } from '../components/UI'
 import { getWatchlist, addToWatchlist, updateWatchlistItem, searchStocks } from '../api/client'
+import { Search } from 'lucide-react'
+
 
 export default function WatchlistPage() {
   const [data, setData]     = useState(null)
@@ -69,7 +71,7 @@ export default function WatchlistPage() {
         <div className="relative mb-4">
           <input className="input pl-9" placeholder="Search and add stocks..."
             value={query} onChange={e => setQuery(e.target.value)} />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"><Search className="w-4 h-4" /></span>
           {results.length > 0 && (
             <div className="absolute z-10 left-0 right-0 top-full mt-1 border border-border rounded-btn bg-white shadow-card overflow-hidden">
               {results.map(r => (
@@ -139,7 +141,7 @@ export default function WatchlistPage() {
             )}
 
             {active.length === 0 && inactive.length === 0 && (
-              <EmptyState icon="🔍" title="No stocks in watchlist"
+              <EmptyState icon={<Search className="w-10 h-10 text-muted" />} title="No stocks in watchlist"
                 subtitle="Search and add NSE stocks above to start receiving signals"
               />
             )}

@@ -4,6 +4,8 @@ import { Layout } from '../components/Navigation'
 import { StatCard, rupee, PnL, LoadingSpinner, GapRiskBadge } from '../components/UI'
 import { getMe, getSignalsToday, getPositions, getDataStatus, triggerRefetch } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { RefreshCw, Hourglass, TrendingUp, AlertTriangle } from 'lucide-react'
+
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -52,15 +54,15 @@ export default function DashboardPage() {
   return (
     <Layout>
       {/* Holiday banner */}
-      {dataStatus?.status === 'skipped_holiday' && (
+      {dataStatus?.status === 'skipped_holiday' ? (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center gap-2">
-          <span>🏖️</span>
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
           <span className="text-sm text-amber-800 font-medium">Market holiday today — no signals generated</span>
         </div>
-      )}
+      ) : null}
 
       <div className="px-4 pt-5 pb-2">
-        <h1 className="text-xl font-bold text-text">{greeting}, {user?.full_name?.split(' ')[0]} 👋</h1>
+        <h1 className="text-xl font-bold text-text">{greeting}, {user?.full_name?.split(' ')[0]}</h1>
         <p className="text-muted text-sm">{today}</p>
       </div>
 
@@ -82,7 +84,7 @@ export default function DashboardPage() {
             <div className="card p-4 border-l-4 border-brand bg-blue-50">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-brand">📬 New Signals Received</div>
+                  <div className="font-bold text-brand">New Signals Received</div>
                   <div className="text-sm text-muted mt-0.5">
                     {buySignals.length} BUY + {exitSignals.length} EXIT alerts — tap to confirm
                   </div>
@@ -101,7 +103,7 @@ export default function DashboardPage() {
       <div className="px-4 py-2">
         <div className="card overflow-hidden">
           <div className="bg-success px-4 py-3 flex items-center justify-between">
-            <span className="font-semibold text-white">📈 BUY Signals Today</span>
+            <span className="font-semibold text-white"><TrendingUp className="w-5 h-5 inline-block" /> BUY Signals Today</span>
             <span className="bg-white text-success text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center">
               {buySignals.length}
             </span>
@@ -136,7 +138,7 @@ export default function DashboardPage() {
       <div className="px-4 py-2">
         <div className="card overflow-hidden">
           <div className="bg-danger px-4 py-3 flex items-center justify-between">
-            <span className="font-semibold text-white">🚨 Exit Alerts Today</span>
+            <span className="font-semibold text-white flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Exit Alerts Today</span>
             <span className="bg-white text-danger text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center">
               {exitSignals.length}
             </span>
@@ -201,9 +203,9 @@ export default function DashboardPage() {
             <button
               onClick={handleRefetch}
               disabled={refetching}
-              className="btn-outline !w-auto px-3 py-2 text-xs"
+              className="btn-outline !w-auto px-3 py-2 text-xs flex items-center gap-1.5 cursor-pointer"
             >
-              {refetching ? '⏳' : '🔄'} Re-fetch
+              {refetching ? <Hourglass className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Re-fetch
             </button>
           </div>
         </div>

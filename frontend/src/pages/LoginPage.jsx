@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form'
 import { useAuth } from '../hooks/useAuth'
 import { login as apiLogin } from '../api/client'
 import { ErrorMsg, LoadingSpinner } from '../components/UI'
+import { BarChart3, Eye, EyeOff } from 'lucide-react'
+
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -39,7 +41,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-brand rounded-2xl mb-4">
-            <span className="text-3xl">📊</span>
+            <BarChart3 className="w-8 h-8 text-white" strokeWidth={2} />
           </div>
           <h1 className="text-2xl font-bold text-text">Channel Breakout</h1>
           <p className="text-muted text-sm mt-1">Courtney Smith Trading Platform</p>
@@ -76,7 +78,7 @@ export default function LoginPage() {
                   onClick={() => setShowPwd(!showPwd)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text"
                 >
-                  {showPwd ? '🙈' : '👁️'}
+                  {showPwd ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {errors.password && <p className="text-danger text-xs mt-1">{errors.password.message}</p>}

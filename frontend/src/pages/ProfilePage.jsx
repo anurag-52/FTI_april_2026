@@ -3,6 +3,8 @@ import { Layout } from '../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner, Toggle, rupee } from '../components/UI'
 import { getMe, updateMe, addCapital, getCapitalLog, changePassword } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { LogOut, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react'
+
 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
@@ -38,7 +40,7 @@ export default function ProfilePage() {
     try {
       await updateMe({ full_name: name, mobile, risk_percent: parseFloat(risk), notify_email: notifyEmail, notify_whatsapp: notifyWA })
       await refreshUser()
-      showSuccess('Profile updated ✅')
+      showSuccess('Profile updated successfully')
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to update')
     } finally {
@@ -57,7 +59,7 @@ export default function ProfilePage() {
       setCapitalAmount('')
       const log = await getCapitalLog()
       setCapitalLog(log)
-      showSuccess(`${capitalType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} recorded ✅`)
+      showSuccess(`${capitalType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} recorded successfully`)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
     } finally {
@@ -73,7 +75,7 @@ export default function ProfilePage() {
     try {
       await changePassword(newPwd, confirmPwd)
       setNewPwd(''); setConfirmPwd('')
-      showSuccess('Password changed ✅')
+      showSuccess('Password changed successfully')
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
     } finally {
@@ -131,8 +133,8 @@ export default function ProfilePage() {
             <button onClick={saveProfile} disabled={loading} className="btn-primary flex items-center justify-center gap-2">
               {loading ? <LoadingSpinner size="sm" /> : null} Save Changes
             </button>
-            <button onClick={logout} className="btn-outline !border-danger !text-danger hover:!bg-red-50">
-              🚪 Logout
+            <button onClick={logout} className="btn-outline !border-danger !text-danger hover:!bg-red-50 flex items-center justify-center gap-2">
+              <LogOut className="w-4 h-4" /> Logout
             </button>
           </div>
         )}
@@ -149,7 +151,7 @@ export default function ProfilePage() {
                 <button key={t} onClick={() => setCapitalType(t)}
                   className={`flex-1 py-2 rounded-btn text-sm font-medium border transition-colors
                     ${capitalType === t ? (t === 'DEPOSIT' ? 'bg-success text-white border-success' : 'bg-danger text-white border-danger') : 'bg-white border-border text-muted'}`}>
-                  {t === 'DEPOSIT' ? '↑ Add Funds' : '↓ Withdraw'}
+                  {t === 'DEPOSIT' ? <><ArrowUp className="w-4 h-4 inline" /> Add Funds</> : <><ArrowDown className="w-4 h-4 inline" /> Withdraw</>}
                 </button>
               ))}
             </div>

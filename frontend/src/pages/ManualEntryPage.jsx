@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Layout } from '../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner, rupee } from '../components/UI'
 import { addManualBuy, addManualSell, getPositions, searchStocks } from '../api/client'
+import { TrendingDown, TrendingUp } from 'lucide-react'
+
 
 export default function ManualEntryPage() {
   const navigate = useNavigate()
@@ -79,7 +81,7 @@ export default function ManualEntryPage() {
           <button key={t} onClick={() => { setType(t); setError('') }}
             className={`flex-1 py-2 rounded-btn text-sm font-semibold transition-colors
               ${type === t ? (t === 'BUY' ? 'bg-success text-white' : 'bg-danger text-white') : 'bg-white border border-border text-muted'}`}>
-            {t === 'BUY' ? '📈 Manual Buy' : '📉 Manual Sell'}
+            {t === 'BUY' ? <><TrendingUp className="w-4 h-4 inline" /> Manual Buy</> : <><TrendingDown className="w-4 h-4 inline" /> Manual Sell</>}
           </button>
         ))}
       </div>

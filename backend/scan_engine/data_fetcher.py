@@ -250,23 +250,25 @@ def fetch_stock_eod(
     ticker_bse = stock.get("ticker_bse")
 
     # ── Tier 1: yfinance ──────────────────────────────────────────────────
-    _log_data_source(supabase, target_date, stock_id, "yfinance", 1,
-                     "retrying", triggered_by=triggered_by,
-                     triggered_by_user=triggered_by_user)
-
     # Fetch enough history for indicator computation (need 120 days for 55-day channel + ADX warmup)
     from_date = target_date - timedelta(days=180)
-    df = fetch_ohlcv_yfinance(ticker_nse, ticker_bse, from_date, target_date)
-    if df is not None and not df.empty:
-        _log_data_source(supabase, target_date, stock_id, "yfinance", 1,
-                         "success", triggered_by=triggered_by,
-                         triggered_by_user=triggered_by_user)
-        return {"data": df, "source": "yfinance", "error": None}
 
-    _log_data_source(supabase, target_date, stock_id, "yfinance", 1,
-                     "failed", error_msg="No data returned",
-                     triggered_by=triggered_by,
-                     triggered_by_user=triggered_by_user)
+    for yf_attempt in range(1, 4):
+        _log_data_source(supabase, target_date, stock_id, "yfinance", yf_attempt,
+                         "retrying", triggered_by=triggered_by,
+                         triggered_by_user=triggered_by_user)
+
+        df = fetch_ohlcv_yfinance(ticker_nse, ticker_bse, from_date, target_date)
+        if df is not None and not df.empty:
+            _log_data_source(supabase, target_date, stock_id, "yfinance", yf_attempt,
+                             "success", triggered_by=triggered_by,
+                             triggered_by_user=triggered_by_user)
+            return {"data": df, "source": "yfinance", "error": None}
+
+        _log_data_source(supabase, target_date, stock_id, "yfinance", yf_attempt,
+                         "failed", error_msg="No data returned",
+                         triggered_by=triggered_by,
+                         triggered_by_user=triggered_by_user)
 
     # ── Tier 2: NSE Bhavcopy ─────────────────────────────────────────────
     if ticker_nse:

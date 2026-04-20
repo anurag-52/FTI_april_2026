@@ -3,6 +3,8 @@ import { Layout } from '../../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner } from '../../components/UI'
 import { updateAdminUser, changePassword } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
+import { LogOut, CheckCircle2 } from 'lucide-react'
+
 
 export default function AdminProfilePage() {
   const { user, refreshUser, logout } = useAuth()
@@ -21,7 +23,7 @@ export default function AdminProfilePage() {
     try {
       await updateAdminUser(user.id, { full_name: name, mobile })
       await refreshUser()
-      showSuccess('Profile updated ✅')
+      showSuccess('Profile updated successfully')
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
     } finally {
@@ -37,7 +39,7 @@ export default function AdminProfilePage() {
     try {
       await changePassword(newPwd, confirmPwd)
       setNewPwd(''); setConfirmPwd('')
-      showSuccess('Password changed ✅')
+      showSuccess('Password changed successfully')
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed')
     } finally {
@@ -88,8 +90,8 @@ export default function AdminProfilePage() {
           </button>
         </div>
 
-        <button onClick={logout} className="btn-outline !border-danger !text-danger">
-          🚪 Logout
+        <button onClick={logout} className="btn-outline !border-danger !text-danger flex items-center justify-center gap-2">
+          <LogOut className="w-4 h-4" /> Logout
         </button>
       </div>
     </Layout>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../../components/Navigation'
 import { PageHeader, StatusBadge, ErrorMsg, LoadingSpinner, rupee } from '../../components/UI'
 import { getAdminUsers, createUser } from '../../api/client'
+import { Search, AlertTriangle } from 'lucide-react'
+
 
 export default function AdminUsersPage() {
   const [users, setUsers]   = useState([])
@@ -113,7 +115,7 @@ export default function AdminUsersPage() {
 
       {/* Search */}
       <div className="px-4 mb-3">
-        <input className="input" placeholder="🔍 Search traders..."
+        <input className="input" placeholder="Search traders..."
           value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
@@ -133,9 +135,9 @@ export default function AdminUsersPage() {
                 <div className="text-right">
                   <div className="text-sm font-medium">{rupee(u.available_capital)}</div>
                   <div className="text-xs text-muted">Available</div>
-                  {u.inactivity_days > 0 && (
-                    <div className="text-xs text-danger mt-1">⚠️ {u.inactivity_days}d inactive</div>
-                  )}
+                  {u.inactivity_days > 0 ? (
+                    <div className="text-xs text-danger mt-1 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> {u.inactivity_days}d inactive</div>
+                  ) : null}
                 </div>
               </div>
             </Link>
