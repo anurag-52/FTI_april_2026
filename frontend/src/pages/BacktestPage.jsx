@@ -167,9 +167,17 @@ export default function BacktestPage() {
 
         {step === 'results' && result && (
           <div className="space-y-4">
-            <button onClick={() => { setStep('setup'); setResult(null) }} className="btn-ghost !w-auto !px-0 flex items-center gap-1">
-              ← Run Another
-            </button>
+            <div className="flex justify-between items-end mb-2">
+              <button onClick={() => { setStep('setup'); setResult(null) }} className="btn-ghost !w-auto !px-0 flex items-center gap-1">
+                ← Run Another
+              </button>
+              {stocks.length > 0 && (
+                <div className="text-right">
+                  <h3 className="font-semibold text-lg">{stocks.map(s => s.ticker_nse).join(', ')}</h3>
+                  <p className="text-muted text-xs">Simulated {fromDate} to {toDate}</p>
+                </div>
+              )}
+            </div>
 
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3">
