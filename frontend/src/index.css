@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    @apply font-sans text-text bg-bg;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-card rounded-[12px] border border-border shadow-card;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-brand text-white rounded-btn px-4 py-3 min-h-tap font-semibold text-sm
+           hover:bg-blue-800 active:bg-blue-900 transition-colors w-full
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-success {
+    @apply bg-success text-white rounded-btn px-4 py-3 min-h-tap font-semibold text-sm
+           hover:bg-green-700 active:bg-green-800 transition-colors w-full;
+  }
+  .btn-danger {
+    @apply bg-danger text-white rounded-btn px-4 py-3 min-h-tap font-semibold text-sm
+           hover:bg-red-700 active:bg-red-800 transition-colors w-full;
+  }
+  .btn-outline {
+    @apply bg-white text-brand border border-brand rounded-btn px-4 py-3 min-h-tap
+           font-semibold text-sm hover:bg-blue-50 transition-colors w-full;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-muted rounded-btn px-4 py-2 font-medium text-sm
+           hover:bg-gray-100 transition-colors;
+  }
+
+  /* Inputs */
+  .input {
+    @apply border border-border rounded-btn px-3 py-3 w-full text-base text-text
+           bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+           placeholder:text-muted transition-colors;
+  }
+  .input-error {
+    @apply border-danger focus:ring-danger/30 focus:border-danger;
+  }
+
+  /* Labels */
+  .label {
+    @apply block text-sm font-medium text-text mb-1;
+  }
+
+  /* Status badges */
+  .badge-active   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800; }
+  .badge-paused   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800; }
+  .badge-suspended{ @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800; }
+
+  /* Warning badges */
+  .badge-warning  { @apply inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200; }
+  .badge-danger   { @apply inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-red-50 text-red-700 border border-red-200; }
+
+  /* Section headers */
+  .section-header {
+    @apply flex items-center gap-2 font-semibold text-text mb-3;
+  }
+
+  /* P&L colors */
+  .pnl-positive { @apply text-success font-semibold; }
+  .pnl-negative { @apply text-danger font-semibold; }
+}
+
+/* Bottom safe area for mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
