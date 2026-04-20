@@ -36,8 +36,12 @@ export function BottomTabBar() {
                ${isActive ? 'text-brand' : 'text-muted hover:text-text'}`
             }
           >
-            <tab.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 1.5} />
-            <span>{tab.label}</span>
+            {({ isActive }) => (
+              <>
+                <tab.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 1.5} />
+                <span>{tab.label}</span>
+              </>
+            )}
           </NavLink>
         ))}
         {user?.role === 'admin' && (
@@ -94,8 +98,12 @@ export function Sidebar() {
                ${isActive ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-muted hover:bg-gray-50 hover:text-text'}`
             }
           >
-            <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-muted group-hover:text-brand'} transition-colors`} strokeWidth={isActive ? 2.5 : 1.5} />
-            {tab.label}
+            {({ isActive }) => (
+              <>
+                <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-muted group-hover:text-brand'} transition-colors`} strokeWidth={isActive ? 2.5 : 1.5} />
+                {tab.label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
