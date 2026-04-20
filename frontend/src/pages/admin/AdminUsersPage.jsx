@@ -13,6 +13,7 @@ export default function AdminUsersPage() {
   const [search, setSearch]   = useState('')
   const [error, setError]     = useState('')
   const [creating, setCreating] = useState(false)
+  const [createdCreds, setCreatedCreds] = useState(null)
 
   // New user form
   const [form, setForm] = useState({ full_name: '', email: '', mobile: '', starting_capital: '', risk_percent: '1.0' })
@@ -34,13 +35,14 @@ export default function AdminUsersPage() {
     if (!form.full_name || !form.email) return setError('Name and email are required')
     setCreating(true)
     try {
-      await createUser({
+      const resp = await createUser({
         full_name: form.full_name,
         email: form.email,
         mobile: form.mobile,
         starting_capital: parseFloat(form.starting_capital) || 0,
         risk_percent: parseFloat(form.risk_percent) || 1.0,
       })
+      setCreatedCreds({ email: form.email, tempPassword: resp.temp_password })
       setForm({ full_name: '', email: '', mobile: '', starting_capital: '', risk_percent: '1.0' })
       setShowForm(false)
       load()
@@ -63,7 +65,7 @@ export default function AdminUsersPage() {
         title="Traders"
         subtitle={`${users.length} total`}
         right={
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary !w-auto px-4 py-2 text-sm">
+          <button onClick={() => { setShowForm(!showForm); setCreatedCreds(null) }} className="btn-primary !w-auto px-4 py-2 text-sm">
             + New Trader
           </button>
         }
@@ -75,6 +77,19 @@ export default function AdminUsersPage() {
         <div className="badge-paused">{statusCounts.paused} Paused</div>
         <div className="badge-suspended">{statusCounts.suspended} Suspended</div>
       </div>
+
+      {/* Success alert for new user */}
+      {createdCreds && (
+        <div className="mx-4 mb-4 p-4 rounded-xl border border-brand bg-brand/5 text-sm">
+          <h3 className="font-bold text-brand mb-1">User Created Successfully!</h3>
+          <p className="text-text mb-2">The system has generated a temporary password. The user will be forced to change it upon first login.</p>
+          <div className="bg-white/80 dark:bg-black/20 p-3 rounded-lg flex flex-col gap-1 border border-border mt-3">
+            <div><span className="text-muted w-24 inline-block">Email:</span> <span className="font-medium text-text select-all">{createdCreds.email}</span></div>
+            <div><span className="text-muted w-24 inline-block">Password:</span> <span className="font-mono text-brand font-bold bg-brand/10 px-2 py-0.5 rounded select-all">{createdCreds.tempPassword}</span></div>
+          </div>
+          <button onClick={() => setCreatedCreds(null)} className="btn-ghost mt-3 text-xs w-auto px-3 py-1">Dismiss</button>
+        </div>
+      )}
 
       {/* Create user form */}
       {showForm && (
