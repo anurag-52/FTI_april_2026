@@ -104,12 +104,16 @@ async def get_positions(user=Depends(get_current_user)):
 
     # Get today's session token if exists
     today_str = str(date.today())
-    session_data = supabase.table("notification_sessions") \
-        .select("session_token, submitted") \
-        .eq("user_id", user_id) \
-        .eq("signal_date", today_str) \
-        .maybe_single() \
-        .execute().data
+    try:
+        session_data = supabase.table("notification_sessions") \
+            .select("session_token, submitted") \
+            .eq("user_id", user_id) \
+            .eq("signal_date", today_str) \
+            .limit(1) \
+            .execute().data
+    except Exception as e:
+        logger.error(f"Error fetching session data: {e}")
+        session_data = None
 
     session_token = None
     session_submitted = None
