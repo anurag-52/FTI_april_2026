@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3, Sun, Moon } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
@@ -31,7 +31,7 @@ export function BottomTabBar() {
         {tabs.map(tab => {
           const active = pathname === tab.to
           return (
-            <NavLink
+            <Link
               key={tab.to}
               to={tab.to}
               className={`flex-1 flex flex-col items-center justify-center text-[11px] font-medium transition-all gap-1
@@ -39,7 +39,7 @@ export function BottomTabBar() {
             >
               <tab.icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.5} />
               <span>{tab.label}</span>
-            </NavLink>
+            </Link>
           )
         })}
         {user?.role === 'admin' && (
@@ -91,7 +91,7 @@ export function Sidebar() {
         {tabs.map(tab => {
           const active = pathname === tab.to
           return (
-            <NavLink
+            <Link
               key={tab.to}
               to={tab.to}
               className={`flex items-center gap-3 px-4 min-h-[44px] rounded-xl text-sm font-medium transition-all group
@@ -99,7 +99,7 @@ export function Sidebar() {
             >
               <tab.icon className={`w-5 h-5 ${active ? 'text-white' : 'text-muted group-hover:text-brand'} transition-colors`} strokeWidth={active ? 2.5 : 1.5} />
               {tab.label}
-            </NavLink>
+            </Link>
           )
         })}
       </nav>
