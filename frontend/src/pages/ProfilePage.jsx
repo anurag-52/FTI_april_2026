@@ -3,11 +3,13 @@ import { Layout } from '../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner, Toggle, rupee } from '../components/UI'
 import { getMe, updateMe, addCapital, getCapitalLog, changePassword } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
-import { LogOut, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react'
+import { useTheme } from '../hooks/useTheme'
+import { LogOut, ArrowDown, ArrowUp, CheckCircle2, Sun, Moon } from 'lucide-react'
 
 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
+  const { isDark, toggleTheme } = useTheme()
   const [loading, setLoading]  = useState(false)
   const [success, setSuccess]  = useState('')
   const [error, setError]      = useState('')
@@ -129,6 +131,15 @@ export default function ProfilePage() {
               <h3 className="font-semibold text-text text-sm">Notifications</h3>
               <Toggle label="Email Notifications" checked={notifyEmail} onChange={setNotifyEmail} />
               <Toggle label="WhatsApp Notifications" checked={notifyWA} onChange={setNotifyWA} />
+            </div>
+            <div className="card p-4 space-y-4">
+              <h3 className="font-semibold text-text text-sm">Appearance</h3>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-text">Dark Mode</span>
+                <button onClick={toggleTheme} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-muted hover:text-text transition-colors">
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <button onClick={saveProfile} disabled={loading} className="btn-primary flex items-center justify-center gap-2">
               {loading ? <LoadingSpinner size="sm" /> : null} Save Changes

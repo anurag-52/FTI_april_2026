@@ -87,6 +87,8 @@ export const createUser = (data) => api.post('/admin/users', data).then(r => r.d
 export const updateAdminUser = (id, data) =>
   api.patch(`/admin/users/${id}`, data).then(r => r.data)
 export const getAdminSystem = () => api.get('/admin/system').then(r => r.data)
+export const getSystemSettings = () => api.get('/admin/settings').then(r => r.data)
+export const updateSystemSettings = (data) => api.patch('/admin/settings', data).then(r => r.data)
 export const getAdminNotifications = () =>
   api.get('/admin/notifications').then(r => r.data)
 

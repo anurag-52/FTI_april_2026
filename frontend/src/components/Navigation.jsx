@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3 } from 'lucide-react'
+import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3, Sun, Moon } from 'lucide-react'
+import { useTheme } from '../hooks/useTheme'
 
 
 const traderTabs = [
@@ -76,9 +77,12 @@ export function Sidebar() {
       </nav>
       {/* User + Logout */}
       <div className="px-3 py-4 border-t border-border">
-        <div className="px-3 py-2 mb-2">
-          <div className="text-sm font-medium text-text truncate">{user?.full_name}</div>
-          <div className="text-xs text-muted truncate">{user?.email}</div>
+        <div className="px-3 py-2 mb-2 flex items-center justify-between">
+          <div className="overflow-hidden">
+            <div className="text-sm font-medium text-text truncate">{user?.full_name}</div>
+            <div className="text-xs text-muted truncate">{user?.email}</div>
+          </div>
+          <ThemeToggle />
         </div>
         <button onClick={logout} className="btn-ghost w-full text-left flex items-center gap-2">
           <LogOut className="w-4 h-4 ml-1" /> Logout
@@ -88,12 +92,21 @@ export function Sidebar() {
   )
 }
 
+function ThemeToggle() {
+  const { isDark, toggleTheme } = useTheme()
+  return (
+    <button onClick={toggleTheme} className="p-2 text-muted hover:text-text rounded-full hover:bg-gray-100 transition-colors">
+      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </button>
+  )
+}
+
 // Layout wrapper combining sidebar + bottom tab bar
 export function Layout({ children, title }) {
   return (
     <div className="min-h-screen bg-bg">
       <Sidebar />
-      <main className="md:ml-60 pb-20 md:pb-0">
+      <main className="md:ml-60 pb-20 md:pb-0 page-enter">
         {children}
       </main>
       <BottomTabBar />

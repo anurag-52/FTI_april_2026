@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../components/Navigation'
 import { PageHeader, rupee, PnL, LoadingSpinner, StatCard, EmptyState } from '../components/UI'
 import { getPositions } from '../api/client'
-import { LineChart } from 'lucide-react'
+import { LineChart, PenLine } from 'lucide-react'
 
 
 export default function PortfolioPage() {
@@ -26,7 +26,7 @@ export default function PortfolioPage() {
         title="Portfolio"
         subtitle={`${open.length} open positions`}
         right={
-          <Link to="/portfolio/manual-entry" className="text-brand text-sm font-medium">✏️ Manual</Link>
+          <Link to="/portfolio/manual-entry" className="text-brand text-sm font-medium flex items-center gap-1.5"><PenLine className="w-4 h-4" /> Manual</Link>
         }
       />
 

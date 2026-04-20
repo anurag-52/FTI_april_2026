@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Layout } from '../../components/Navigation'
-import { PageHeader, LoadingSpinner, rupee } from '../../components/UI'
-import { getDataStatus, triggerRefetch, getAdminUsers, getAdminSystem } from '../../api/client'
-import { RefreshCw, Hourglass, LineChart, AlertTriangle, CheckCircle2, Radio } from 'lucide-react'
+import { PageHeader, LoadingSpinner, rupee, ErrorMsg } from '../../components/UI'
+import { getDataStatus, triggerRefetch, getAdminUsers, getAdminSystem, getSystemSettings, updateSystemSettings } from '../../api/client'
+import { RefreshCw, Hourglass, LineChart, AlertTriangle, CheckCircle2, Radio, KeyRound, Save } from 'lucide-react'
 
 
 export default function AdminSystemPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [refetching, setRefetching] = useState(null)
+  const [refetching, setRefetching] = useState('')
+  const [keys, setKeys] = useState({ resend_api_key: '', msg91_api_key: '', resend_from_email: '', msg91_sender_id: '' })
+  const [savingKeys, setSavingKeys] = useState(false)
+  const [keySuccess, setKeySuccess] = useState('')
+  const [keyError, setKeyError] = useState('')
 
-  const load = () => {
-    Promise.all([getDataStatus(), getAdminUsers()])
-      .then(([d, users]) => setData({ ...d, users }))
+  const load = async () => {
+    Promise.all([getDataStatus(), getAdminUsers(), getSystemSettings()])
+      .then(([d, users, settings]) => {
+        setData({ ...d, users })
+        setKeys(settings)
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }
@@ -26,6 +33,19 @@ export default function AdminSystemPage() {
       setTimeout(() => { load(); setRefetching(null) }, 3000)
     } catch {
       setRefetching(null)
+    }
+  }
+
+  const handleSaveKeys = async () => {
+    setSavingKeys(true); setKeyError(''); setKeySuccess('')
+    try {
+      await updateSystemSettings(keys)
+      setKeySuccess('API keys updated successfully')
+      setTimeout(() => setKeySuccess(''), 3000)
+    } catch (e) {
+      setKeyError(e.response?.data?.detail || 'Failed to update keys')
+    } finally {
+      setSavingKeys(false)
     }
   }
 
@@ -111,6 +131,30 @@ export default function AdminSystemPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Integrations & API Keys */}
+          <div className="card p-4">
+            <h2 className="font-semibold text-text mb-3 flex items-center gap-2"><KeyRound className="w-5 h-5" /> Integrations & API Keys</h2>
+            {keySuccess && <div className="bg-success/10 text-success border border-success/30 px-3 py-2 rounded-lg text-sm mb-3">{keySuccess}</div>}
+            <ErrorMsg msg={keyError} />
+            <div className="space-y-4">
+              <div>
+                <label className="label text-sm">Resend API Key (Email)</label>
+                <input type="password" placeholder="re_..." className="input !h-10 text-sm" value={keys.resend_api_key || ''} onChange={e => setKeys({ ...keys, resend_api_key: e.target.value })} />
+              </div>
+              <div>
+                <label className="label text-sm">Resend From Email</label>
+                <input type="text" placeholder="signals@yourdomain.com" className="input !h-10 text-sm" value={keys.resend_from_email || ''} onChange={e => setKeys({ ...keys, resend_from_email: e.target.value })} />
+              </div>
+              <div className="border-t border-border pt-4">
+                <label className="label text-sm">MSG91 Auth Key (WhatsApp)</label>
+                <input type="password" placeholder="Auth key..." className="input !h-10 text-sm" value={keys.msg91_api_key || ''} onChange={e => setKeys({ ...keys, msg91_api_key: e.target.value })} />
+              </div>
+              <button disabled={savingKeys} onClick={handleSaveKeys} className="btn-primary !w-auto flex items-center gap-2 mt-2">
+                {savingKeys ? <Hourglass className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Keys
+              </button>
             </div>
           </div>
         </div>
