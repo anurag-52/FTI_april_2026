@@ -648,7 +648,18 @@ def _update_inactivity(trader: dict, had_signals_today: bool, scan_date: date):
     if new_days == 5 and not trader.get("warned_day5"):
         updates["warned_day5"] = True
         logger.info(f"Inactivity DAY 5 warning for trader {user_id[:8]}")
-        # Notification will be dispatched by notification system
+        try:
+            from integrations.notifications import notify_inactivity
+            # Get latest session token for notification link
+            session = supabase.table("notification_sessions") \
+                .select("session_token") \
+                .eq("user_id", user_id) \
+                .order("signal_date", desc=True) \
+                .limit(1).execute()
+            token = session.data[0]["session_token"] if session.data else ""
+            notify_inactivity(user_id, 5, token)
+        except Exception as e:
+            logger.error(f"Failed to dispatch day-5 warning: {e}")
 
     elif new_days == 7:
         updates["status"] = "paused"
@@ -657,10 +668,26 @@ def _update_inactivity(trader: dict, had_signals_today: bool, scan_date: date):
     elif new_days == 12 and not trader.get("warned_day12"):
         updates["warned_day12"] = True
         logger.info(f"Inactivity DAY 12 warning for trader {user_id[:8]}")
+        try:
+            from integrations.notifications import notify_inactivity
+            session = supabase.table("notification_sessions") \
+                .select("session_token") \
+                .eq("user_id", user_id) \
+                .order("signal_date", desc=True) \
+                .limit(1).execute()
+            token = session.data[0]["session_token"] if session.data else ""
+            notify_inactivity(user_id, 12, token)
+        except Exception as e:
+            logger.error(f"Failed to dispatch day-12 warning: {e}")
 
     elif new_days >= 15:
         updates["status"] = "suspended"
         logger.warning(f"AUTO-SUSPENDED trader {user_id[:8]} at day {new_days} inactivity")
+        try:
+            from integrations.notifications import notify_auto_suspended
+            notify_auto_suspended(user_id)
+        except Exception as e:
+            logger.error(f"Failed to dispatch auto-suspend notice: {e}")
 
     supabase.table("users").update(updates).eq("id", user_id).execute()
 
@@ -837,30 +864,20 @@ def _notify_admin_scan_failure(scan_date: date, error: str):
 
 
 def _notify_all_traders_holiday(scan_date: date, holiday_name: str):
-    """Queue market holiday notifications for all active traders."""
-    traders = supabase.table("users") \
-        .select("id, full_name") \
-        .eq("role", "trader") \
-        .in_("status", ["active"]) \
-        .execute().data or []
-
-    for trader in traders:
-        try:
-            supabase.table("notification_log").insert({
-                "user_id": trader["id"],
-                "channel": "EMAIL",
-                "notification_type": "MARKET_HOLIDAY",
-                "subject": f"Market closed today — {holiday_name}",
-                "body_preview": (
-                    f"Hi {trader['full_name']}, market is closed today for "
-                    f"{holiday_name}. No signals today. See you tomorrow!"
-                )[:300],
-                "status": "pending",
-            }).execute()
-        except Exception as e:
-            logger.error(f"Failed to queue holiday notification for {trader['id'][:8]}: {e}")
-
-    logger.info(f"Holiday notification queued for {len(traders)} traders: {holiday_name}")
+    """Queue market holiday notifications for all active traders via dispatcher."""
+    try:
+        from integrations.notifications import notify_market_holiday
+        result = notify_market_holiday(holiday_name)
+        logger.info(f"Holiday notifications dispatched: {result}")
+    except Exception as e:
+        logger.error(f"Failed to dispatch holiday notifications: {e}")
+        # Fallback logging
+        traders = supabase.table("users") \
+            .select("id") \
+            .eq("role", "trader") \
+            .in_("status", ["active", "paused"]) \
+            .execute().data or []
+        logger.info(f"Holiday notification fallback logged for {len(traders)} traders: {holiday_name}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
