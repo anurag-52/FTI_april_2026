@@ -66,8 +66,8 @@ def _gen_temp_password(length: int = 12) -> str:
 async def create_user(req: CreateUserRequest, admin=Depends(get_admin_user)):
     """Create a new trader account. Generates temp password + sends welcome email."""
     # Check email not already in use
-    existing = supabase.table("users").select("id").eq("email", req.email).maybe_single().execute()
-    if existing.data:
+    result = supabase.table("users").select("id").eq("email", req.email).maybe_single().execute()
+    if result and result.data:
         raise HTTPException(status_code=400, detail="Email already exists")
 
     temp_password = _gen_temp_password()
@@ -84,7 +84,7 @@ async def create_user(req: CreateUserRequest, admin=Depends(get_admin_user)):
 
     # Create user in our table
     now = datetime.now(timezone.utc).isoformat()
-    user_row = supabase.table("users").insert({
+    result = supabase.table("users").insert({
         "full_name": req.full_name,
         "email": req.email,
         "mobile": req.mobile,
@@ -99,7 +99,12 @@ async def create_user(req: CreateUserRequest, admin=Depends(get_admin_user)):
         "password_changed": False,
         "capital_entered": req.starting_capital > 0,
         "created_by": admin["id"],
-    }).execute().data[0]
+    }).execute()
+    
+    if not result or not result.data:
+        raise HTTPException(status_code=500, detail="Failed to create user record")
+    
+    user_row = result.data[0]
 
     # Log initial capital deposit if any
     if req.starting_capital > 0:
