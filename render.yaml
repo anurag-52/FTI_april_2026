@@ -1,0 +1,76 @@
+services:
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  - type: web
+    name: fti-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: MSG91_API_KEY
+        sync: false
+      - key: MSG91_SENDER_ID
+        sync: false
+
+  # ── Cron Jobs ────────────────────────────────────────────────────────────────
+  - type: cron
+    name: fti-daily-scan
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 11 * * 1-5"    # 4:30 PM IST = 11:00 UTC, Mon-Fri
+    startCommand: >
+      python -c "
+      import httpx, os, sys;
+      r = httpx.post(
+        'https://fti-backend.onrender.com/internal/scan/run',
+        headers={'x-cron-secret': os.environ['CRON_SECRET']},
+        timeout=30
+      );
+      print(r.text);
+      sys.exit(0 if r.status_code == 200 else 1)
+      "
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: fti-holiday-refresh
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    schedule: "30 2 * * 1"    # 8:00 AM IST every Monday = 02:30 UTC
+    startCommand: >
+      python -c "
+      import httpx, os, sys;
+      r = httpx.post(
+        'https://fti-backend.onrender.com/internal/refresh-holidays',
+        headers={'x-cron-secret': os.environ['CRON_SECRET']},
+        timeout=30
+      );
+      print(r.text);
+      sys.exit(0 if r.status_code == 200 else 1)
+      "
+    envVars:
+      - key: CRON_SECRET
+        sync: false
