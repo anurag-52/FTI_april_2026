@@ -13,6 +13,7 @@ from auth import get_current_user
 from config import supabase
 from datetime import date, datetime, timezone
 import logging
+from stock_resolver import resolve_stock_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -39,6 +40,9 @@ async def run_backtest(req: BacktestRequest, background_tasks: BackgroundTasks, 
         raise HTTPException(status_code=400, detail="Minimum capital ₹10,000")
     if req.position_size_type not in ("FIXED_AMOUNT", "PERCENT_CAPITAL"):
         raise HTTPException(status_code=400, detail="position_size_type must be FIXED_AMOUNT or PERCENT_CAPITAL")
+
+    # Intercept dynamic yfinance IDs and fully register them if needed
+    req.stock_ids = [resolve_stock_id(sid) for sid in req.stock_ids]
 
     # Validate stocks exist
     stocks = supabase.table("stocks").select("id, ticker_nse, company_name") \

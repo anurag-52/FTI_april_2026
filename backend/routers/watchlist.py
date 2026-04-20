@@ -10,6 +10,11 @@ from pydantic import BaseModel
 from auth import get_current_user
 from config import supabase
 from datetime import datetime, timezone
+import requests
+import logging
+from stock_resolver import resolve_stock_id
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -69,6 +74,9 @@ async def add_to_watchlist(
     user=Depends(get_current_user)
 ):
     """Add a stock to watchlist (max 30 active). Rule 3."""
+    # Resolve any dynamic yfinance IDs to true Database UUIDs before insertion
+    req.stock_id = resolve_stock_id(req.stock_id)
+
     # Check current active count
     count = supabase.table("watchlists") \
         .select("id", count="exact") \
@@ -179,4 +187,36 @@ async def search_stocks(q: str, user=Depends(get_current_user)):
         .limit(15) \
         .execute()
 
-    return result.data or []
+    local_results = result.data or []
+
+    # If we have space, dynamically poll Yahoo Finance to expand available stocks!
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        resp = requests.get(
+            f"https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": q, "quotesCount": 10},
+            headers=headers,
+            timeout=4
+        )
+        if resp.status_code == 200:
+            quotes = resp.json().get("quotes", [])
+            local_tickers = {s.get("ticker_nse") for s in local_results if s.get("ticker_nse")}
+            for qObj in quotes:
+                symbol = qObj.get("symbol", "")
+                if symbol.endswith(".NS") or symbol.endswith(".BO"):
+                    ticker = symbol.replace(".NS", "").replace(".BO", "")
+                    if ticker not in local_tickers:
+                        local_results.append({
+                            "id": f"yfinance:{symbol}",
+                            "ticker_nse": ticker,
+                            "ticker_bse": ticker if symbol.endswith(".BO") else None,
+                            "company_name": qObj.get("longname") or qObj.get("shortname") or ticker,
+                            "exchange": "NSE" if symbol.endswith(".NS") else "BSE",
+                            "sector": qObj.get("sector", "Unknown")
+                        })
+                        local_tickers.add(ticker)
+    except Exception as e:
+        logger.error(f"Yahoo search failed for query '{q}': {e}")
+
+    return local_results[:15]
+
