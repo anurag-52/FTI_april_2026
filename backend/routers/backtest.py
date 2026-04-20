@@ -1,14 +1,20 @@
 """
 /backtest routes — Run backtests and retrieve results
+
+Courtney Smith Channel Breakout backtesting engine.
+Uses pre-computed indicator data from stock_prices table.
+Up to 7 stocks, shared capital pool.
 """
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from auth import get_current_user
 from config import supabase
 from datetime import date, datetime, timezone
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -27,8 +33,12 @@ async def run_backtest(req: BacktestRequest, background_tasks: BackgroundTasks, 
     """Kick off a backtest run. Returns immediately with run ID; compute in background."""
     if len(req.stock_ids) > 7:
         raise HTTPException(status_code=400, detail="Maximum 7 stocks per backtest")
+    if len(req.stock_ids) < 1:
+        raise HTTPException(status_code=400, detail="At least 1 stock required")
     if req.starting_capital < 10000:
         raise HTTPException(status_code=400, detail="Minimum capital ₹10,000")
+    if req.position_size_type not in ("FIXED_AMOUNT", "PERCENT_CAPITAL"):
+        raise HTTPException(status_code=400, detail="position_size_type must be FIXED_AMOUNT or PERCENT_CAPITAL")
 
     # Validate stocks exist
     stocks = supabase.table("stocks").select("id, ticker_nse, company_name") \
@@ -37,13 +47,12 @@ async def run_backtest(req: BacktestRequest, background_tasks: BackgroundTasks, 
         raise HTTPException(status_code=400, detail="One or more stock IDs not found")
 
     run_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
 
     supabase.table("backtest_runs").insert({
         "id": run_id,
         "user_id": user["id"],
         "stock_ids": req.stock_ids,
-        "stock_names": [s["ticker_nse"] for s in stocks],
+        "stock_names": [s["ticker_nse"] or s["company_name"] for s in stocks],
         "from_date": req.from_date,
         "to_date": req.to_date,
         "starting_capital": req.starting_capital,
@@ -58,7 +67,7 @@ async def run_backtest(req: BacktestRequest, background_tasks: BackgroundTasks, 
 
 @router.get("/backtest/{run_id}")
 async def get_backtest_result(run_id: str, user=Depends(get_current_user)):
-    """Get a backtest result by ID."""
+    """Get a backtest result by ID including trade log."""
     result = supabase.table("backtest_runs") \
         .select("*") \
         .eq("id", run_id) \
@@ -69,21 +78,28 @@ async def get_backtest_result(run_id: str, user=Depends(get_current_user)):
     if not result:
         raise HTTPException(status_code=404, detail="Backtest run not found")
 
-    # If still has no trades count, it's still running
+    # If still running (no total_trades yet)
     if result.get("total_trades") is None:
         return {"id": run_id, "status": "running"}
 
-    return {**result, "status": "completed"}
+    # Get trade log
+    trades = supabase.table("backtest_trades") \
+        .select("*") \
+        .eq("backtest_id", run_id) \
+        .order("trade_date") \
+        .execute().data or []
+
+    return {**result, "status": "completed", "trades": trades}
 
 
 @router.get("/backtest")
 async def list_backtests(user=Depends(get_current_user)):
     """List user's backtest runs."""
     result = supabase.table("backtest_runs") \
-        .select("id, stock_names, from_date, to_date, starting_capital, total_trades, win_rate_percent, total_return_percent, created_at") \
+        .select("id, stock_names, from_date, to_date, starting_capital, total_trades, win_rate_percent, total_return_percent, final_capital, created_at") \
         .eq("user_id", user["id"]) \
         .order("created_at", desc=True) \
-        .limit(10) \
+        .limit(20) \
         .execute()
     return result.data or []
 
@@ -94,10 +110,22 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
     """
     Run the full Courtney Smith Channel Breakout backtest on historical data.
     Uses pre-computed indicator data from stock_prices table.
+    Shared capital pool across all stocks.
     """
+    try:
+        _run_backtest_inner(run_id, req, stocks, user_id)
+    except Exception as e:
+        logger.error(f"Backtest {run_id} failed: {e}")
+        supabase.table("backtest_runs").update({
+            "total_trades": 0,
+            "equity_curve": [{"date": req.from_date, "capital": req.starting_capital, "error": str(e)}],
+        }).eq("id", run_id).execute()
+
+
+def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id: str):
+    """Core backtest simulation logic."""
     from scan_engine.indicator_engine import compute_indicators, compute_signals
     import pandas as pd
-    import json
 
     capital = req.starting_capital
     equity_curve = [{"date": req.from_date, "capital": capital}]
@@ -111,13 +139,16 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
     max_dd = 0
     peak = capital
 
+    # Track open positions per stock (list for multiple positions)
+    open_positions = {}  # stock_id -> list of {entry_price, entry_date, qty, ch55_high}
+
     for stock in stocks:
         stock_id = stock["id"]
         ticker = stock["ticker_nse"]
 
         # Fetch historical price data from DB
         prices = supabase.table("stock_prices") \
-            .select("price_date, open, high, low, close, volume, ch55_high, ch55_low, ch20_high, ch20_low, adx_20, adx_rising, ch55_high_flat_days, buy_signal, exit_trailing_stop, exit_adx") \
+            .select("price_date, open, high, low, close, volume, ch55_high, ch55_low, ch20_high, ch20_low, adx_20, adx_rising, ch55_high_flat_days, buy_signal, exit_rejection, exit_trailing_stop, exit_adx, any_exit_signal") \
             .eq("stock_id", stock_id) \
             .gte("price_date", req.from_date) \
             .lte("price_date", req.to_date) \
@@ -125,7 +156,7 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
             .execute().data or []
 
         if len(prices) < 56:
-            # Not enough history — fetch and compute from yfinance
+            # Not enough history in DB — try yfinance
             try:
                 from scan_engine.data_fetcher import fetch_ohlcv_yfinance
                 from datetime import timedelta
@@ -136,7 +167,8 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
                     raw = compute_indicators(raw)
                     raw = compute_signals(raw)
                     prices = raw[raw["date"].astype(str) >= req.from_date].to_dict("records")
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Backtest yfinance fallback failed for {ticker}: {e}")
                 continue
 
         # Simulate trades
@@ -148,8 +180,8 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
 
         for row in prices:
             row_date = str(row.get("price_date") or row.get("date", ""))
-            close = row.get("close", 0) or 0
-            ch20_low = row.get("ch20_low") or 0
+            close = float(row.get("close", 0) or 0)
+            ch20_low = float(row.get("ch20_low") or 0) if row.get("ch20_low") else 0
 
             if not in_position:
                 # Check BUY signal
@@ -162,44 +194,78 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
                         alloc = req.position_size_value
 
                     if alloc > capital or alloc <= 0:
-                        action = "SKIPPED_CAPITAL"
+                        # Log skipped trade
+                        all_trades.append({
+                            "backtest_id": run_id,
+                            "stock_id": stock_id,
+                            "trade_date": row_date,
+                            "close_price": close,
+                            "ch55_high": row.get("ch55_high"),
+                            "ch20_low": row.get("ch20_low"),
+                            "adx_value": row.get("adx_20"),
+                            "buy_signal": True,
+                            "action": "SKIPPED_CAPITAL",
+                            "capital_after": round(capital, 2),
+                        })
                     else:
                         entry_price = close
                         entry_date = row_date
-                        entry_ch55_high = row.get("ch55_high") or close
+                        entry_ch55_high = float(row.get("ch55_high") or close)
                         qty = int(alloc / close)
                         if qty > 0:
                             capital -= qty * close
                             in_position = True
-                            action = "BUY"
-                        else:
-                            action = "SKIPPED_CAPITAL"
-                else:
-                    action = "HOLD"
+
+                            # Store BUY trade
+                            all_trades.append({
+                                "backtest_id": run_id,
+                                "stock_id": stock_id,
+                                "trade_date": row_date,
+                                "close_price": close,
+                                "ch55_high": row.get("ch55_high"),
+                                "ch20_low": row.get("ch20_low"),
+                                "adx_value": row.get("adx_20"),
+                                "adx_rising": row.get("adx_rising"),
+                                "flat_days": row.get("ch55_high_flat_days"),
+                                "buy_signal": True,
+                                "action": "BUY",
+                                "entry_price": close,
+                                "quantity": qty,
+                                "capital_after": round(capital, 2),
+                            })
             else:
                 # Check EXIT signals
                 exit_triggered = False
                 exit_reason = None
 
-                if row.get("exit_trailing_stop") and ch20_low and close < ch20_low:
+                # Trailing stop
+                if row.get("exit_trailing_stop") or (ch20_low and close < ch20_low):
                     exit_triggered = True
                     exit_reason = "TRAILING_STOP"
+                # ADX exit
                 elif row.get("exit_adx"):
                     exit_triggered = True
                     exit_reason = "ADX_EXIT"
 
-                # Rejection rule (days 1-2 from entry)
+                # Rejection rule (day 2 from entry — no close above entry ch55_high)
                 if entry_date and not exit_triggered:
-                    days_held = (date.fromisoformat(row_date) - date.fromisoformat(entry_date)).days
-                    if days_held == 2 and close <= entry_ch55_high:
-                        exit_triggered = True
-                        exit_reason = "REJECTION_RULE"
+                    try:
+                        days_held = (date.fromisoformat(row_date) - date.fromisoformat(entry_date)).days
+                        if days_held >= 2 and close <= entry_ch55_high:
+                            exit_triggered = True
+                            exit_reason = "REJECTION_RULE"
+                    except ValueError:
+                        pass
 
                 if exit_triggered:
                     exit_value = qty * close
                     pnl = exit_value - (qty * entry_price)
                     pnl_pct = (pnl / (qty * entry_price) * 100) if entry_price else 0
-                    days = (date.fromisoformat(row_date) - date.fromisoformat(entry_date)).days
+                    days = 0
+                    try:
+                        days = (date.fromisoformat(row_date) - date.fromisoformat(entry_date)).days
+                    except ValueError:
+                        pass
 
                     capital += exit_value
                     total_trades += 1
@@ -221,6 +287,10 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
                         "backtest_id": run_id,
                         "stock_id": stock_id,
                         "trade_date": row_date,
+                        "close_price": close,
+                        "ch55_high": row.get("ch55_high"),
+                        "ch20_low": row.get("ch20_low"),
+                        "adx_value": row.get("adx_20"),
                         "action": "SELL",
                         "entry_price": entry_price,
                         "exit_price": close,
@@ -229,15 +299,12 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
                         "pnl_amount": round(pnl, 2),
                         "pnl_percent": round(pnl_pct, 4),
                         "days_held": days,
-                        "capital_after": round(capital, 2)
+                        "capital_after": round(capital, 2),
                     })
 
                     in_position = False
-                    action = "SELL"
-                else:
-                    action = "HOLD"
 
-            # Update equity curve monthly
+            # Update equity curve at intervals
             if row_date[-2:] in ["01", "15"]:
                 equity_curve.append({"date": row_date, "capital": round(capital, 2)})
 
@@ -264,6 +331,11 @@ def _run_backtest_compute(run_id: str, req: BacktestRequest, stocks: list, user_
         "equity_curve": equity_curve,
     }).eq("id", run_id).execute()
 
-    # Store trade records
+    # Store trade records (batch insert)
     if all_trades:
-        supabase.table("backtest_trades").insert(all_trades).execute()
+        # Insert in batches of 100 to avoid payload limits
+        for i in range(0, len(all_trades), 100):
+            batch = all_trades[i:i+100]
+            supabase.table("backtest_trades").insert(batch).execute()
+
+    logger.info(f"Backtest {run_id} complete: {total_trades} trades, {win_rate:.1f}% win rate, {total_return:.1f}% return")

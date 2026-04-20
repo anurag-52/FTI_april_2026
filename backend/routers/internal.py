@@ -40,8 +40,8 @@ async def refresh_holidays(_: bool = Depends(get_cron_auth)):
     Called by Render Cron Job every Monday at 8:00 AM IST.
     """
     try:
-        from integrations.holiday_calendar import refresh_holiday_calendar
-        result = refresh_holiday_calendar()
+        from integrations.holiday_calendar import monday_refresh
+        result = monday_refresh()
         return {"status": "ok", **result}
     except Exception as e:
         return {"status": "error", "message": str(e)}

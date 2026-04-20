@@ -21,11 +21,13 @@ export default function DashboardPage() {
   }, [])
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   const handleRefetch = async () => {
     setRefetching(true)
     try {
-      await triggerRefetch()
+      await triggerRefetch('yfinance')
       const d = await getDataStatus()
       setDataStatus(d)
     } finally {
@@ -58,7 +60,7 @@ export default function DashboardPage() {
       )}
 
       <div className="px-4 pt-5 pb-2">
-        <h1 className="text-xl font-bold text-text">Good morning, {user?.full_name?.split(' ')[0]} 👋</h1>
+        <h1 className="text-xl font-bold text-text">{greeting}, {user?.full_name?.split(' ')[0]} 👋</h1>
         <p className="text-muted text-sm">{today}</p>
       </div>
 
