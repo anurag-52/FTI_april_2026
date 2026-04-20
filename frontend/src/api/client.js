@@ -68,6 +68,10 @@ export const runBacktest = (data) =>
   api.post('/backtest', data).then(r => r.data)
 export const getBacktestResult = (id) =>
   api.get(`/backtest/${id}`).then(r => r.data)
+export const getBacktestDailyLog = async (id) => {
+  const res = await api.get(`/backtest/${id}/daily-log`);
+  return res.data;
+};
 
 // DATA FEED
 export const getDataStatus = () => api.get('/data/status').then(r => r.data)

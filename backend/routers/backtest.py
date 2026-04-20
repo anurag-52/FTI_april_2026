@@ -89,7 +89,71 @@ async def get_backtest_result(run_id: str, user=Depends(get_current_user)):
         .order("trade_date") \
         .execute().data or []
 
-    return {**result, "status": "completed", "trades": trades}
+@router.get("/backtest/{run_id}/daily-log")
+async def get_backtest_daily_log(run_id: str, user=Depends(get_current_user)):
+    """Fetch day-by-day simulation log by merging actual trades with raw stock prices."""
+    run = supabase.table("backtest_runs") \
+        .select("*") \
+        .eq("id", run_id) \
+        .eq("user_id", user["id"]) \
+        .maybe_single() \
+        .execute().data
+        
+    if not run:
+        raise HTTPException(status_code=404, detail="Backtest run not found")
+        
+    trades = supabase.table("backtest_trades") \
+        .select("*") \
+        .eq("backtest_id", run_id) \
+        .execute().data or []
+        
+    raw_prices = supabase.table("stock_prices") \
+        .select("price_date, stock_id, close, ch55_high, ch55_low, ch20_high, ch20_low, adx_20, adx_rising, ch55_high_flat_days") \
+        .in_("stock_id", run["stock_ids"]) \
+        .gte("price_date", run["from_date"]) \
+        .lte("price_date", run["to_date"]) \
+        .order("price_date") \
+        .execute().data or []
+        
+    date_stock_map = {}
+    for p in raw_prices:
+        p_date = str(p["price_date"])
+        s_id = p["stock_id"]
+        if p_date not in date_stock_map:
+            date_stock_map[p_date] = {}
+        date_stock_map[p_date][s_id] = {
+            "close_price": p["close"],
+            "ch55_high": p["ch55_high"],
+            "ch55_low": p["ch55_low"],
+            "ch20_high": p["ch20_high"],
+            "ch20_low": p["ch20_low"],
+            "adx_value": p["adx_20"],
+            "adx_rising": p["adx_rising"],
+            "flat_days": p["ch55_high_flat_days"],
+            "action": "HOLD",
+            "pnl_percent": None
+        }
+        
+    for t in trades:
+        t_date = str(t["trade_date"])
+        s_id = t["stock_id"]
+        if t_date in date_stock_map and s_id in date_stock_map[t_date]:
+            date_stock_map[t_date][s_id]["action"] = t["action"]
+            date_stock_map[t_date][s_id]["pnl_percent"] = t.get("pnl_percent")
+            
+    stocks = supabase.table("stocks").select("id, ticker_nse, company_name").in_("id", run["stock_ids"]).execute().data or []
+    stock_names = {s["id"]: s["ticker_nse"] or s["company_name"] for s in stocks}
+
+    daily_log = []
+    for d in sorted(date_stock_map.keys()):
+        for s_id, s_data in date_stock_map[d].items():
+            daily_log.append({
+                "date": d,
+                "stock": stock_names.get(s_id, "Unknown"),
+                **s_data
+            })
+            
+    return daily_log
 
 
 @router.get("/backtest")

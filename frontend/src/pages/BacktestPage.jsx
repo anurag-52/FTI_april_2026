@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Layout } from '../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner, StatCard, rupee } from '../components/UI'
-import { runBacktest, getBacktestResult, searchStocks } from '../api/client'
+import { runBacktest, getBacktestResult, getBacktestDailyLog, searchStocks } from '../api/client'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 
 export default function BacktestPage() {
   const [step, setStep]     = useState('setup') // setup | loading | results
   const [error, setError]   = useState('')
   const [result, setResult] = useState(null)
+  const [dailyLog, setDailyLog] = useState([])
 
   // Form state
   const [stocks, setStocks] = useState([])   // selected stocks (max 7)
@@ -60,6 +61,10 @@ export default function BacktestPage() {
           attempts++
         } while (r.status === 'running' && attempts < 30)
         setResult(r)
+        if (r.status === 'completed') {
+          const log = await getBacktestDailyLog(res.id)
+          setDailyLog(log)
+        }
       } else {
         setResult(res)
       }
@@ -68,6 +73,23 @@ export default function BacktestPage() {
       setError(e.response?.data?.detail || 'Backtest failed')
       setStep('setup')
     }
+  }
+
+  const exportCSV = () => {
+    if (!dailyLog || dailyLog.length === 0) return
+    const headers = ['Date', 'Stock', 'Close Price', '55D High', '20D Low', 'ADX', 'Flat Days', 'Action']
+    const rows = dailyLog.map(r => [
+      r.date, r.stock, r.close_price, r.ch55_high, r.ch20_low, r.adx_value, r.flat_days, r.action
+    ])
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'backtest_day_by_day.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -172,6 +194,60 @@ export default function BacktestPage() {
                     <Line type="monotone" dataKey="capital" stroke="#0F4C81" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Day-by-Day Log */}
+            {dailyLog.length > 0 && (
+              <div className="card p-4 mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-text">Day-by-Day Simulation Logs</h3>
+                  <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-1">
+                    [Export CSV]
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-border">
+                        <th className="p-2">Date</th>
+                        <th className="p-2">Stock</th>
+                        <th className="p-2">Close</th>
+                        <th className="p-2">55D High</th>
+                        <th className="p-2">20D Low</th>
+                        <th className="p-2">ADX</th>
+                        <th className="p-2">Flat Days</th>
+                        <th className="p-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyLog.slice(0, 100).map((row, i) => (
+                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="p-2">{row.date}</td>
+                          <td className="p-2">{row.stock}</td>
+                          <td className="p-2">{rupee(row.close_price)}</td>
+                          <td className="p-2">{rupee(row.ch55_high)}</td>
+                          <td className="p-2">{rupee(row.ch20_low)}</td>
+                          <td className="p-2">{row.adx_value?.toFixed(1) || '-'}</td>
+                          <td className="p-2">{row.flat_days}</td>
+                          <td className={`p-2 font-medium 
+                            ${row.action === 'BUY' ? 'text-green-600' : 
+                              row.action === 'SELL' ? 'text-red-600' : 
+                              row.action === 'SKIPPED_CAPITAL' ? 'text-amber-500' : 
+                              'text-muted'}
+                          `}>
+                            {row.action}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {dailyLog.length > 100 && (
+                  <div className="text-center text-xs text-muted mt-3 italic">
+                    Showing first 100 days. Export CSV to view all {dailyLog.length} rows.
+                  </div>
+                )}
               </div>
             )}
           </div>
