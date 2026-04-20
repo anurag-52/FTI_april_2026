@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3, Sun, Moon } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
@@ -22,28 +22,26 @@ const adminTabs = [
 export function BottomTabBar() {
   const { user, viewMode, setViewMode } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const tabs = viewMode === 'admin' ? adminTabs : traderTabs
   
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-border z-50 pb-safe md:hidden shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
       <div className="flex h-[64px]">
-        {tabs.map(tab => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center text-[11px] font-medium transition-all gap-1
-               ${isActive ? 'text-brand' : 'text-muted hover:text-text'}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <tab.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 1.5} />
-                <span>{tab.label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        {tabs.map(tab => {
+          const active = pathname === tab.to
+          return (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className={`flex-1 flex flex-col items-center justify-center text-[11px] font-medium transition-all gap-1
+                         ${active ? 'text-brand' : 'text-muted hover:text-text'}`}
+            >
+              <tab.icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.5} />
+              <span>{tab.label}</span>
+            </NavLink>
+          )
+        })}
         {user?.role === 'admin' && (
           <button
             onClick={() => {
@@ -68,6 +66,7 @@ export function BottomTabBar() {
 export function Sidebar() {
   const { user, logout, viewMode, setViewMode } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const tabs = viewMode === 'admin' ? adminTabs : traderTabs
 
   return (
@@ -89,23 +88,20 @@ export function Sidebar() {
         <div className="text-[10px] font-bold text-muted uppercase tracking-[0.1em] px-3 mb-2">
           {viewMode === 'admin' ? 'System Management' : 'Trading Dashboard'}
         </div>
-        {tabs.map(tab => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 min-h-[44px] rounded-xl text-sm font-medium transition-all group
-               ${isActive ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-muted hover:bg-gray-50 hover:text-text'}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-muted group-hover:text-brand'} transition-colors`} strokeWidth={isActive ? 2.5 : 1.5} />
-                {tab.label}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {tabs.map(tab => {
+          const active = pathname === tab.to
+          return (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className={`flex items-center gap-3 px-4 min-h-[44px] rounded-xl text-sm font-medium transition-all group
+                         ${active ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-muted hover:bg-gray-50 hover:text-text'}`}
+            >
+              <tab.icon className={`w-5 h-5 ${active ? 'text-white' : 'text-muted group-hover:text-brand'} transition-colors`} strokeWidth={active ? 2.5 : 1.5} />
+              {tab.label}
+            </NavLink>
+          )
+        })}
       </nav>
       {/* User + Logout */}
       <div className="px-4 py-5 border-t border-border bg-gray-50/50">
