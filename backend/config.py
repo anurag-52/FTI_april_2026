@@ -22,10 +22,9 @@ ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 MSG91_API_KEY: str = os.getenv("MSG91_API_KEY", "")
 MSG91_SENDER_ID: str = os.getenv("MSG91_SENDER_ID", "")
 
-# Brevo (Email — free tier 300/day)
-BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
-BREVO_SENDER_NAME: str = os.getenv("BREVO_SENDER_NAME", "Channel Breakout Signals")
-BREVO_SENDER_EMAIL: str = os.getenv("BREVO_SENDER_EMAIL", "signals@yourdomain.com")
+# Resend (Email)
+RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL: str = os.getenv("RESEND_FROM_EMAIL", "signals@yourdomain.com")
 
 # Service-role client (used by backend for all DB operations)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)

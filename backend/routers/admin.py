@@ -115,7 +115,7 @@ async def create_user(req: CreateUserRequest, admin=Depends(get_admin_user)):
 
     # Send welcome email
     try:
-        from integrations.email_brevo import send_email
+        from integrations.email_resend import send_email
         send_email(
             req.email,
             "Welcome to Channel Breakout Signals — Your Account is Ready",

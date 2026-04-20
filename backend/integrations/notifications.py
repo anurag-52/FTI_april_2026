@@ -35,8 +35,8 @@ def _wa():
 
 
 def _em():
-    from integrations import email_brevo
-    return email_brevo
+    from integrations import email_resend
+    return email_resend
 
 
 # ── User Fetcher ─────────────────────────────────────────────────────────────
