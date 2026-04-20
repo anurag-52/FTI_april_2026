@@ -24,10 +24,19 @@ import os
 logger = logging.getLogger(__name__)
 
 # ── Resend Configuration ──────────────────────────────────────────────────────
-RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
-RESEND_FROM_EMAIL: str = os.getenv("RESEND_FROM_EMAIL", "signals@yourdomain.com")
 
-resend.api_key = RESEND_API_KEY
+def _get_resend_creds():
+    api_key_env = os.getenv("RESEND_API_KEY", "")
+    from_email_env = os.getenv("RESEND_FROM_EMAIL", "signals@yourdomain.com")
+    try:
+        res = supabase.table("system_settings").select("resend_api_key, resend_from_email").eq("id", "global").maybeSingle().execute()
+        if res.data:
+            api_key = res.data.get("resend_api_key") or api_key_env
+            from_email = res.data.get("resend_from_email") or from_email_env
+            return api_key, from_email
+    except Exception as e:
+        logger.error(f"Error fetching resend settings: {e}")
+    return api_key_env, from_email_env
 
 
 # ── Notification Logging ─────────────────────────────────────────────────────
@@ -78,15 +87,18 @@ def send_email(
     Returns:
         True if sent successfully, False otherwise
     """
-    if not RESEND_API_KEY:
+    api_key, from_email = _get_resend_creds()
+    if not api_key:
         logger.warning("RESEND_API_KEY not configured — skipping email send")
         if user_id:
             _log_notification(user_id, notification_type, subject,
                               "SKIPPED (no credentials)", "failed")
         return False
 
+    resend.api_key = api_key
+
     params = {
-        "from": RESEND_FROM_EMAIL,
+        "from": from_email,
         "to": [to_email],
         "subject": subject,
         "html": html_body,

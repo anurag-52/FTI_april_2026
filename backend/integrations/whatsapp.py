@@ -17,12 +17,25 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
+import os
 
-from config import MSG91_API_KEY, MSG91_SENDER_ID, FRONTEND_URL, supabase
+from config import FRONTEND_URL, supabase
 
 logger = logging.getLogger(__name__)
 
 # ── MSG91 API Configuration ──────────────────────────────────────────────────
+def _get_msg91_creds():
+    api_key_env = os.getenv("MSG91_API_KEY", "")
+    sender_id_env = os.getenv("MSG91_SENDER_ID", "")
+    try:
+        res = supabase.table("system_settings").select("msg91_api_key, msg91_sender_id").eq("id", "global").maybeSingle().execute()
+        if res.data:
+            api_key = res.data.get("msg91_api_key") or api_key_env
+            sender_id = res.data.get("msg91_sender_id") or sender_id_env
+            return api_key, sender_id
+    except Exception as e:
+        logger.error(f"Error fetching msg91 settings: {e}")
+    return api_key_env, sender_id_env
 MSG91_BASE_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/"
 
 # Template slug names — must match MSG91-approved templates
@@ -95,7 +108,8 @@ def send_whatsapp(
     Returns:
         True if sent successfully, False otherwise
     """
-    if not MSG91_API_KEY or not MSG91_SENDER_ID:
+    api_key, sender_id = _get_msg91_creds()
+    if not api_key or not sender_id:
         logger.warning("MSG91 credentials not configured — skipping WhatsApp send")
         if user_id:
             _log_notification(user_id, notification_type, None,
@@ -107,7 +121,7 @@ def send_whatsapp(
     params = list(variables.values())
 
     payload = {
-        "integrated_number": MSG91_SENDER_ID,
+        "integrated_number": sender_id,
         "content_type": "template",
         "payload": {
             "to": mobile_clean,
@@ -137,7 +151,7 @@ def send_whatsapp(
                 headers={
                     "accept": "application/json",
                     "content-type": "application/json",
-                    "authkey": MSG91_API_KEY,
+                    "authkey": api_key,
                 },
             )
 

@@ -1,197 +1,114 @@
 """
 AGENT 3 — SCAN ENGINE
-background_jobs.py
-
-Background computation when a new stock is added to a watchlist.
-Fetches ~10 years of historical data, computes all indicators & signals,
-and bulk upserts into stock_prices.
-
-Usage:
-    from scan_engine.background_jobs import fetch_and_compute_historical
-    background_tasks.add_task(fetch_and_compute_historical, stock_id, ticker_nse)
+background_jobs.py — Heavy long-running background tasks.
 """
 import logging
-from datetime import date, datetime, timedelta, timezone
-import math
+from datetime import date, timedelta
+from typing import Optional
+import json
 
 from config import supabase
-from scan_engine.data_fetcher import fetch_ohlcv_yfinance
-from scan_engine.indicator_engine import compute_indicators, compute_signals
+from scan_engine.indicator_engine import compute_indicators
+from scan_engine.signal_engine import compute_buy_signals, compute_exit_signals
 
 logger = logging.getLogger(__name__)
 
-# Batch size for bulk upserts (avoid hitting Supabase payload limits)
-UPSERT_BATCH_SIZE = 500
 
-
-async def fetch_and_compute_historical(stock_id: str, ticker_nse: str):
+async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bse: Optional[str] = None):
     """
-    Fetch 10 years of historical data for a stock, compute all indicators
-    and signals, and bulk upsert into stock_prices.
-
-    Called as a BackgroundTask when a stock is first added to any watchlist.
-
-    Args:
-        stock_id:   UUID of the stock record in stocks table
-        ticker_nse: NSE ticker symbol (e.g., "RELIANCE.NS")
+    1. Fetch 10 years historical data from yfinance
+    2. Compute indicators using indicator_engine.compute_indicators()
+    3. Compute signals using indicator_engine.compute_signals()
+    4. Bulk upsert into stock_prices table
+    5. Update stocks table: compute_status='complete', history_fetched=True
+    6. Handle errors: set compute_status='failed' on error
     """
-    started_at = datetime.now(timezone.utc)
-    logger.info(f"[BG] Starting historical computation for {ticker_nse} (stock_id={stock_id})")
-
+    logger.info(f"Starting historical fetch and compute for {stock_id} ({ticker_nse})")
     try:
-        # Mark as computing
-        supabase.table("stocks").update({
-            "compute_status": "computing",
-            "compute_progress": 0,
-            "updated_at": started_at.isoformat(),
-        }).eq("id", stock_id).execute()
+        from scan_engine.data_fetcher import fetch_ohlcv_yfinance
 
-        # ── Step 1: Fetch 10 years of historical data ────────────────────
-        to_date = date.today()
-        from_date = to_date - timedelta(days=365 * 10)
+        # Set status to running
+        supabase.table("stocks").update({"compute_status": "in_progress"}).eq("id", stock_id).execute()
 
-        _update_progress(stock_id, 5, "Fetching historical data...")
+        # Fetch 10 years historical
+        end_date = date.today()
+        start_date = end_date - timedelta(days=3650)  # ~10 years
 
-        df = fetch_ohlcv_yfinance(ticker_nse, from_date, to_date)
+        ticker_to_fetch = ticker_nse or ticker_bse
+        if not ticker_to_fetch:
+            raise ValueError("No ticker available for fetch")
 
+        df = fetch_ohlcv_yfinance(ticker_to_fetch, start_date, end_date)
         if df is None or df.empty:
-            raise ValueError(f"No historical data returned for {ticker_nse}")
+            raise ValueError("No data returned from yfinance")
 
-        total_rows = len(df)
-        logger.info(f"[BG] Fetched {total_rows} rows for {ticker_nse} ({from_date} → {to_date})")
-        _update_progress(stock_id, 20, f"Fetched {total_rows} rows")
-
-        # ── Step 2: Compute indicators ───────────────────────────────────
-        _update_progress(stock_id, 25, "Computing indicators...")
+        # Compute
         df = compute_indicators(df)
-        _update_progress(stock_id, 50, "Computing signals...")
+        df = compute_buy_signals(df)
+        df = compute_exit_signals(df)
 
-        # ── Step 3: Compute signals ──────────────────────────────────────
-        df = compute_signals(df)
-        _update_progress(stock_id, 60, "Preparing data for storage...")
-
-        # ── Step 4: Bulk upsert into stock_prices ────────────────────────
-        rows_to_upsert = []
+        # Prepare for bulk upsert
+        records = []
         for _, row in df.iterrows():
-            row_date = row.get("date")
-            if row_date is None:
-                continue
-            # Convert date to string if needed
-            if hasattr(row_date, "isoformat"):
-                date_str = row_date.isoformat() if hasattr(row_date, "isoformat") else str(row_date)
-            else:
-                date_str = str(row_date)
-            # Only keep the date part (YYYY-MM-DD)
-            date_str = date_str[:10]
+            def _sfloat(v):
+                import math
+                if v is None or math.isnan(v): return None
+                return float(v)
 
-            record = {
+            def _sint(v):
+                import math
+                if v is None or math.isnan(v): return None
+                return int(v)
+
+            records.append({
                 "stock_id": stock_id,
-                "price_date": date_str,
-                "open": _safe_float(row.get("open")),
-                "high": _safe_float(row.get("high")),
-                "low": _safe_float(row.get("low")),
-                "close": _safe_float(row.get("close")),
-                "volume": int(row.get("volume", 0)) if row.get("volume") and not _is_nan(row.get("volume")) else None,
-                "ch55_high": _safe_float(row.get("ch55_high")),
-                "ch55_low": _safe_float(row.get("ch55_low")),
-                "ch20_high": _safe_float(row.get("ch20_high")),
-                "ch20_low": _safe_float(row.get("ch20_low")),
-                "adx_20": _safe_float(row.get("adx_20")),
-                "adx_rising": bool(row.get("adx_rising")) if row.get("adx_rising") is not None and not _is_nan(row.get("adx_rising")) else None,
-                "ch55_high_flat_days": int(row.get("ch55_high_flat_days", 0)) if not _is_nan(row.get("ch55_high_flat_days")) else 0,
-                "ch55_low_flat_days": int(row.get("ch55_low_flat_days", 0)) if not _is_nan(row.get("ch55_low_flat_days")) else 0,
-                "buy_signal": bool(row.get("buy_signal", False)),
-                "exit_trailing_stop": bool(row.get("exit_trailing_stop", False)),
-                "exit_adx": bool(row.get("exit_adx", False)),
+                "price_date": str(row["date"]),
+                "open": _sfloat(row.get("open")),
+                "high": _sfloat(row.get("high")),
+                "low": _sfloat(row.get("low")),
+                "close": _sfloat(row.get("close")),
+                "volume": _sint(row.get("volume")),
+                "ch55_high": _sfloat(row.get("ch55_high")),
+                "ch55_low": _sfloat(row.get("ch55_low")),
+                "ch20_high": _sfloat(row.get("ch20_high")),
+                "ch20_low": _sfloat(row.get("ch20_low")),
+                "adx_20": _sfloat(row.get("adx_20")),
+                "adx_rising": bool(row.get("adx_rising")) if "adx_rising" in row else None,
+                "ch55_high_flat_days": _sint(row.get("ch55_high_flat_days")),
+                "ch55_low_flat_days": _sint(row.get("ch55_low_flat_days")),
+                "buy_signal": bool(row.get("buy_signal")) if "buy_signal" in row else False,
+                "exit_trailing_stop": bool(row.get("exit_trailing_stop")) if "exit_trailing_stop" in row else False,
+                "exit_adx": bool(row.get("exit_adx")) if "exit_adx" in row else False,
                 "exit_rejection": False,
-                "any_exit_signal": bool(row.get("any_exit_signal", False)),
-                "hit_upper_circuit": bool(row.get("hit_upper_circuit", False)),
-                "hit_lower_circuit": bool(row.get("hit_lower_circuit", False)),
-            }
-            rows_to_upsert.append(record)
+                "any_exit_signal": bool(row.get("any_exit_signal")) if "any_exit_signal" in row else False,
+                "hit_upper_circuit": bool(row.get("hit_upper_circuit")) if "hit_upper_circuit" in row else False,
+                "hit_lower_circuit": bool(row.get("hit_lower_circuit")) if "hit_lower_circuit" in row else False,
+                "circuit_limit_pct": _sfloat(row.get("circuit_limit_pct")),
+                "is_post_holiday": bool(row.get("is_post_holiday")) if "is_post_holiday" in row else False,
+                "gap_down_pct": _sfloat(row.get("gap_down_pct")),
+                "gap_risk_warning": bool(row.get("gap_risk_warning")) if "gap_risk_warning" in row else False,
+            })
 
-        # Batch upsert
-        total_batches = math.ceil(len(rows_to_upsert) / UPSERT_BATCH_SIZE)
-        for batch_idx in range(total_batches):
-            start = batch_idx * UPSERT_BATCH_SIZE
-            end = start + UPSERT_BATCH_SIZE
-            batch = rows_to_upsert[start:end]
-
+        # Insert in chunks of 500 to avoid payload size limits
+        chunk_size = 500
+        for i in range(0, len(records), chunk_size):
+            chunk = records[i:i + chunk_size]
             supabase.table("stock_prices").upsert(
-                batch,
+                chunk, 
                 on_conflict="stock_id,price_date"
             ).execute()
 
-            # Update progress (60% → 95%)
-            progress = 60 + int(35 * (batch_idx + 1) / total_batches)
-            _update_progress(stock_id, min(progress, 95), f"Stored batch {batch_idx + 1}/{total_batches}")
-
-        # ── Step 5: Mark complete ────────────────────────────────────────
-        actual_dates = df["date"].dropna()
-        history_from = str(actual_dates.min())[:10] if len(actual_dates) > 0 else str(from_date)
-        history_to = str(actual_dates.max())[:10] if len(actual_dates) > 0 else str(to_date)
-
+        # Update success status
         supabase.table("stocks").update({
-            "compute_status": "complete",
-            "compute_progress": 100,
+            "compute_status": "complete", 
             "history_fetched": True,
-            "history_from_date": history_from,
-            "history_to_date": history_to,
-            "data_fetched_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "missing_data_days": 0
         }).eq("id", stock_id).execute()
 
-        elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
-        logger.info(
-            f"[BG] ✅ Historical computation complete for {ticker_nse}: "
-            f"{len(rows_to_upsert)} rows in {elapsed:.1f}s"
-        )
+        logger.info(f"Historical compute success for {stock_id}: {len(records)} days processed")
 
     except Exception as e:
-        logger.error(f"[BG] ❌ Historical computation FAILED for {ticker_nse}: {e}")
-        try:
-            supabase.table("stocks").update({
-                "compute_status": "failed",
-                "compute_progress": 0,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }).eq("id", stock_id).execute()
-        except Exception as update_err:
-            logger.error(f"[BG] Failed to update stock status to 'failed': {update_err}")
-
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _update_progress(stock_id: str, progress: int, message: str = ""):
-    """Update compute_progress on the stocks table."""
-    try:
+        logger.error(f"Historical compute failed for {stock_id}: {e}")
         supabase.table("stocks").update({
-            "compute_progress": progress,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "compute_status": "failed"
         }).eq("id", stock_id).execute()
-        if message:
-            logger.info(f"[BG] Progress {progress}%: {message}")
-    except Exception as e:
-        logger.warning(f"[BG] Progress update failed: {e}")
-
-
-def _safe_float(val):
-    """Convert value to float, handling NaN and None."""
-    if val is None:
-        return None
-    try:
-        f = float(val)
-        if math.isnan(f) or math.isinf(f):
-            return None
-        return round(f, 4)
-    except (ValueError, TypeError):
-        return None
-
-
-def _is_nan(val):
-    """Check if a value is NaN."""
-    if val is None:
-        return True
-    try:
-        return math.isnan(float(val))
-    except (ValueError, TypeError):
-        return False

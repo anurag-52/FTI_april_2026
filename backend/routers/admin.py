@@ -279,6 +279,38 @@ async def admin_confirm_signals(user_id: str, req: AdminConfirmRequest, admin=De
     return result
 
 
+class UpdateSettingsRequest(BaseModel):
+    msg91_api_key: Optional[str] = None
+    msg91_sender_id: Optional[str] = None
+    resend_api_key: Optional[str] = None
+    resend_from_email: Optional[str] = None
+
+
+@router.get("/admin/settings")
+async def get_system_settings(admin=Depends(get_admin_user)):
+    """Fetch global system settings (integrations API keys)."""
+    result = supabase.table("system_settings").select("*").eq("id", "global").maybeSingle().execute()
+    if not result.data:
+        # DB returns None if empty, return empty dict or defaults
+        return {}
+    return result.data
+
+
+@router.patch("/admin/settings")
+async def update_system_settings(req: UpdateSettingsRequest, admin=Depends(get_admin_user)):
+    """Update global system settings (integrations API keys)."""
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No settings to update")
+    
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    # Upsert to 'global' row
+    updates["id"] = "global"
+    
+    result = supabase.table("system_settings").upsert(updates).execute()
+    logger.info(f"Admin {admin['email']} updated system settings")
+    return result.data[0] if result.data else {"message": "Settings updated"}
+
 # ─── System dashboard ────────────────────────────────────────────────────────
 
 @router.get("/admin/system")
