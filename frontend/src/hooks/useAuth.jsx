@@ -6,6 +6,21 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null)
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewModeState] = useState(() => {
+    return localStorage.getItem('viewMode') || null
+  })
+
+  // Sync viewMode with user role initial load
+  useEffect(() => {
+    if (user && !viewMode) {
+      setViewMode(user.role)
+    }
+  }, [user])
+
+  const setViewMode = (mode) => {
+    setViewModeState(mode)
+    localStorage.setItem('viewMode', mode)
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -47,7 +62,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, viewMode, setViewMode }}>
       {children}
     </AuthContext.Provider>
   )
