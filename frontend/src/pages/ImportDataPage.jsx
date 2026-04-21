@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Layout } from '../components/Navigation'
 import { searchStocks, getImportedStocks, importStockData } from '../api/client'
 import { Search, Database, CheckCircle2, Loader2, AlertCircle, RefreshCw, PlusCircle, ArrowRight } from 'lucide-react'
-import { format } from 'date-fns'
+
 
 export default function ImportDataPage() {
   const [query, setQuery] = useState('')
