@@ -173,21 +173,29 @@ async def delete_watchlist_item(stock_id: str, user=Depends(get_current_user)):
 
 
 @router.get("/stocks/search")
-async def search_stocks(q: str, user=Depends(get_current_user)):
+async def search_stocks(q: str, imported_only: bool = False, user=Depends(get_current_user)):
     """Search stocks by ticker or company name. Returns up to 15 results."""
     if len(q) < 2:
         return []
 
     q_upper = q.upper()
-    result = supabase.table("stocks") \
-        .select("id, ticker_nse, ticker_bse, company_name, exchange, sector") \
+    query = supabase.table("stocks") \
+        .select("id, ticker_nse, ticker_bse, company_name, exchange, sector, history_fetched, compute_status, compute_progress") \
         .eq("is_active", True) \
-        .eq("is_suspended", False) \
-        .or_(f"ticker_nse.ilike.%{q_upper}%,company_name.ilike.%{q}%") \
+        .eq("is_suspended", False)
+
+    if imported_only:
+        query = query.eq("history_fetched", True)
+
+    result = query.or_(f"ticker_nse.ilike.%{q_upper}%,company_name.ilike.%{q}%") \
         .limit(15) \
         .execute()
 
     local_results = result.data or []
+
+    # If imported_only is true, we strictly do NOT poll yfinance
+    if imported_only:
+        return local_results[:15]
 
     # If we have space, dynamically poll Yahoo Finance to expand available stocks!
     try:
@@ -212,11 +220,46 @@ async def search_stocks(q: str, user=Depends(get_current_user)):
                             "ticker_bse": ticker if symbol.endswith(".BO") else None,
                             "company_name": qObj.get("longname") or qObj.get("shortname") or ticker,
                             "exchange": "NSE" if symbol.endswith(".NS") else "BSE",
-                            "sector": qObj.get("sector", "Unknown")
+                            "sector": qObj.get("sector", "Unknown"),
+                            "history_fetched": False
                         })
                         local_tickers.add(ticker)
     except Exception as e:
         logger.error(f"Yahoo search failed for query '{q}': {e}")
 
     return local_results[:15]
+
+
+@router.get("/stocks/imported")
+async def get_imported_stocks(user=Depends(get_current_user)):
+    """List all stocks that have 10-year historical data ready in the central DB."""
+    result = supabase.table("stocks") \
+        .select("id, ticker_nse, ticker_bse, company_name, exchange, sector, updated_at") \
+        .eq("history_fetched", True) \
+        .order("ticker_nse") \
+        .execute()
+    return result.data or []
+
+
+@router.post("/stocks/import/{stock_id}")
+async def import_stock_data(stock_id: str, background_tasks: BackgroundTasks, user=Depends(get_current_user)):
+    """Trigger a 10-year historical backfill for any stock. Resolves yfinance IDs first."""
+    from stock_resolver import resolve_stock_id
+    real_id = resolve_stock_id(stock_id)
+    
+    stock = supabase.table("stocks").select("*").eq("id", real_id).maybe_single().execute().data
+    if not stock:
+        raise HTTPException(status_code=404, detail="Stock not found")
+        
+    if stock.get("history_fetched"):
+        return {"message": f"{stock.get('ticker_nse')} is already imported.", "already_done": True}
+
+    from scan_engine.background_jobs import fetch_and_compute_historical
+    background_tasks.add_task(
+        fetch_and_compute_historical, 
+        stock_id=stock["id"], 
+        ticker_nse=stock.get("ticker_nse"), 
+        ticker_bse=stock.get("ticker_bse")
+    )
+    return {"message": f"Historical hydration started for {stock.get('ticker_nse')}"}
 

@@ -23,7 +23,7 @@ export default function BacktestPage() {
   useEffect(() => {
     if (query.length < 2) { setSearchResults([]); return }
     const t = setTimeout(() => {
-      searchStocks(query).then(setSearchResults).catch(() => setSearchResults([]))
+      searchStocks(query, true).then(setSearchResults).catch(() => setSearchResults([]))
     }, 300)
     return () => clearTimeout(t)
   }, [query])

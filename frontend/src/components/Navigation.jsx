@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3, Sun, Moon } from 'lucide-react'
+import { Search, LineChart, LogOut, User, Users, TrendingUp, LayoutDashboard, Settings, BarChart3, Sun, Moon, Database } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 
 
@@ -9,6 +9,7 @@ const traderTabs = [
   { to: '/portfolio',  icon: LineChart, label: 'Portfolio' },
   { to: '/watchlist',  icon: Search, label: 'Watchlist' },
   { to: '/backtest',   icon: TrendingUp, label: 'Backtest' },
+  { to: '/import-data',icon: Database, label: 'Import Data' },
   { to: '/profile',    icon: User, label: 'Profile' },
 ]
 

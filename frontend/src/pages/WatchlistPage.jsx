@@ -23,7 +23,7 @@ export default function WatchlistPage() {
   useEffect(() => {
     if (query.length < 2) { setResults([]); return }
     const t = setTimeout(() => {
-      searchStocks(query).then(setResults).catch(() => setResults([]))
+      searchStocks(query, true).then(setResults).catch(() => setResults([]))
     }, 300)
     return () => clearTimeout(t)
   }, [query])

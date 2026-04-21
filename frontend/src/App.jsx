@@ -11,6 +11,7 @@ const PortfolioPage = lazy(() => import('./pages/PortfolioPage'))
 const ManualEntryPage = lazy(() => import('./pages/ManualEntryPage'))
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'))
 const BacktestPage = lazy(() => import('./pages/BacktestPage'))
+const ImportDataPage = lazy(() => import('./pages/ImportDataPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'))
 const AdminUserDetailPage = lazy(() => import('./pages/admin/AdminUserDetailPage'))
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/portfolio/manual-entry" element={<PrivateRoute><ManualEntryPage /></PrivateRoute>} />
             <Route path="/watchlist" element={<PrivateRoute><WatchlistPage /></PrivateRoute>} />
             <Route path="/backtest" element={<PrivateRoute><BacktestPage /></PrivateRoute>} />
+            <Route path="/import-data" element={<PrivateRoute><ImportDataPage /></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
 
             {/* Admin routes */}

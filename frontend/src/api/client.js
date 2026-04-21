@@ -47,8 +47,16 @@ export const addToWatchlist = (stock_id) =>
   api.post('/me/watchlist', { stock_id }).then(r => r.data)
 export const updateWatchlistItem = (stock_id, data) =>
   api.patch(`/me/watchlist/${stock_id}`, data).then(r => r.data)
-export const searchStocks = (q) =>
-  api.get(`/stocks/search?q=${q}`).then(r => r.data)
+
+// STOCKS
+export const searchStocks = (q, imported_only = false) =>
+  api.get(`/stocks/search?q=${q}&imported_only=${imported_only}`).then(r => r.data)
+
+export const getImportedStocks = () =>
+  api.get('/stocks/imported').then(r => r.data)
+
+export const importStockData = (stock_id) =>
+  api.post(`/stocks/import/${stock_id}`).then(r => r.data)
 
 // SIGNALS
 export const getSignalsToday = () => api.get('/me/signals/today').then(r => r.data)
