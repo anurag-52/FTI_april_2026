@@ -159,6 +159,22 @@ async def get_users(admin=Depends(get_admin_user)):
         .execute()
     return result.data or []
 
+@router.post("/admin/hydrate/{stock_id}")
+async def admin_hydrate_stock(stock_id: str, background_tasks: BackgroundTasks, admin=Depends(get_admin_user)):
+    """Force an immediate 10-year historical backfill for any stock."""
+    stock = supabase.table("stocks").select("*").eq("id", stock_id).maybe_single().execute().data
+    if not stock:
+        raise HTTPException(status_code=404, detail="Stock not found")
+        
+    from scan_engine.background_jobs import fetch_and_compute_historical
+    background_tasks.add_task(
+        fetch_and_compute_historical, 
+        stock_id=stock["id"], 
+        ticker_nse=stock.get("ticker_nse"), 
+        ticker_bse=stock.get("ticker_bse")
+    )
+    return {"message": f"Historical hydration started for {stock.get('ticker_nse')}"}
+
 
 @router.get("/admin/users/{user_id}")
 async def get_user_detail(user_id: str, admin=Depends(get_admin_user)):
