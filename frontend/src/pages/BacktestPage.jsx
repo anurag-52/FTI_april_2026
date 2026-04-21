@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Layout } from '../components/Navigation'
 import { PageHeader, ErrorMsg, LoadingSpinner, StatCard, rupee } from '../components/UI'
 import { runBacktest, getBacktestResult, getBacktestDailyLog, searchStocks } from '../api/client'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 export default function BacktestPage() {
   const [step, setStep]     = useState('setup') // setup | loading | results
@@ -77,9 +78,9 @@ export default function BacktestPage() {
 
   const exportCSV = () => {
     if (!dailyLog || dailyLog.length === 0) return
-    const headers = ['Date', 'Stock', 'Close Price', '55D High', '20D Low', 'ADX', 'Flat Days', 'Action']
+    const headers = ['Date', 'Stock', 'Close (₹)', 'Day High', 'Day Low', '55D High', '20D Low', 'ADX 20', 'Flat Days', 'Buy Signal', 'Sell Trap', 'Action']
     const rows = dailyLog.map(r => [
-      r.date, r.stock, r.close_price, r.ch55_high, r.ch20_low, r.adx_value, r.flat_days, r.action
+      r.date, r.stock, r.close_price, r.day_high, r.day_low, r.ch55_high, r.ch20_low, r.adx_value, r.flat_days, r.buy_signal ? 'YES' : 'NO', r.any_exit_signal ? 'YES' : 'NO', r.action
     ])
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -189,10 +190,34 @@ export default function BacktestPage() {
               <StatCard label="Avg Loss" value={`${result.avg_loss_percent?.toFixed(2)}%`} color="red" />
             </div>
 
+            {/* Technical Indicators Chart */}
+            {dailyLog.length > 0 && (
+              <div className="card p-4">
+                <div className="font-semibold text-text mb-3">Technical Indicators (Price vs Channels)</div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={dailyLog.slice(-100)}>
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d?.slice(5)} />
+                      <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} orientation="right" />
+                      <Tooltip formatter={(v) => rupee(v)} labelFormatter={d => `Date: ${d}`} />
+                      {/* Price Action */}
+                      <Line type="monotone" dataKey="day_high" stroke="#94A3B8" strokeWidth={1} dot={false} strokeDasharray="3 3" />
+                      <Line type="monotone" dataKey="day_low" stroke="#94A3B8" strokeWidth={1} dot={false} strokeDasharray="3 3" />
+                      <Line type="monotone" dataKey="close_price" stroke="#0F4C81" strokeWidth={3} dot={false} name="Close Price" />
+                      {/* Channels */}
+                      <Line type="stepAfter" dataKey="ch55_high" stroke="#059669" strokeWidth={2} dot={false} name="55D High" />
+                      <Line type="stepAfter" dataKey="ch20_low" stroke="#DC2626" strokeWidth={2} dot={false} name="20D Low" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] text-muted text-center mt-2 italic">Showing last 100 observations for clarity</p>
+              </div>
+            )}
+
             {/* Equity curve */}
             {result.equity_curve?.length > 0 && (
               <div className="card p-4">
-                <div className="font-semibold text-text mb-3">Equity Curve</div>
+                <div className="font-semibold text-text mb-3">Equity Growth</div>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={result.equity_curve}>
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d?.slice(5)} />
@@ -219,26 +244,37 @@ export default function BacktestPage() {
                     <thead>
                       <tr className="bg-gray-50 border-b border-border">
                         <th className="p-2">Date</th>
-                        <th className="p-2">Stock</th>
                         <th className="p-2">Close</th>
+                        <th className="p-2">High/Low</th>
                         <th className="p-2">55D High</th>
                         <th className="p-2">20D Low</th>
-                        <th className="p-2">ADX</th>
-                        <th className="p-2">Flat Days</th>
+                        <th className="p-2">ADX 20</th>
+                        <th className="p-2 text-center">Flat</th>
+                        <th className="p-2 text-center">Buy</th>
+                        <th className="p-2 text-center">Trap</th>
                         <th className="p-2">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {dailyLog.slice(0, 100).map((row, i) => (
                         <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="p-2">{row.date}</td>
-                          <td className="p-2">{row.stock}</td>
-                          <td className="p-2">{rupee(row.close_price)}</td>
-                          <td className="p-2">{rupee(row.ch55_high)}</td>
-                          <td className="p-2">{rupee(row.ch20_low)}</td>
+                          <td className="p-2 text-xs font-mono">{row.date}</td>
+                          <td className="p-2 font-medium">{rupee(row.close_price)}</td>
+                          <td className="p-2 text-[10px] text-muted">
+                            H: {rupee(row.day_high)}<br/>
+                            L: {rupee(row.day_low)}
+                          </td>
+                          <td className="p-2 text-green-700">{rupee(row.ch55_high)}</td>
+                          <td className="p-2 text-red-700">{rupee(row.ch20_low)}</td>
                           <td className="p-2">{row.adx_value?.toFixed(1) || '-'}</td>
-                          <td className="p-2">{row.flat_days}</td>
-                          <td className={`p-2 font-medium 
+                          <td className="p-2 text-center">{row.flat_days}</td>
+                          <td className="p-2 text-center">
+                            {row.buy_signal && <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />}
+                          </td>
+                          <td className="p-2 text-center">
+                            {row.any_exit_signal && <XCircle className="w-4 h-4 text-red-500 mx-auto" />}
+                          </td>
+                          <td className={`p-2 font-bold text-xs
                             ${row.action === 'BUY' ? 'text-green-600' : 
                               row.action === 'SELL' ? 'text-red-600' : 
                               row.action === 'SKIPPED_CAPITAL' ? 'text-amber-500' : 

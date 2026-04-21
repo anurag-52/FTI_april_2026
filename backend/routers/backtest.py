@@ -129,6 +129,8 @@ async def get_backtest_daily_log(run_id: str, user=Depends(get_current_user)):
             date_stock_map[p_date] = {}
         date_stock_map[p_date][s_id] = {
             "close_price": p["close"],
+            "day_high": p.get("high"),
+            "day_low": p.get("low"),
             "ch55_high": p["ch55_high"],
             "ch55_low": p["ch55_low"],
             "ch20_high": p["ch20_high"],
@@ -136,6 +138,8 @@ async def get_backtest_daily_log(run_id: str, user=Depends(get_current_user)):
             "adx_value": p["adx_20"],
             "adx_rising": p["adx_rising"],
             "flat_days": p["ch55_high_flat_days"],
+            "buy_signal": p.get("buy_signal", False),
+            "any_exit_signal": p.get("any_exit_signal", False),
             "action": "HOLD",
             "pnl_percent": None
         }
@@ -272,6 +276,8 @@ def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id
                             "stock_id": stock_id,
                             "trade_date": row_date,
                             "close_price": close,
+                            "day_high": row.get("high"),
+                            "day_low": row.get("low"),
                             "ch55_high": row.get("ch55_high"),
                             "ch20_low": row.get("ch20_low"),
                             "adx_value": row.get("adx_20"),
@@ -294,6 +300,8 @@ def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id
                                 "stock_id": stock_id,
                                 "trade_date": row_date,
                                 "close_price": close,
+                                "day_high": row.get("high"),
+                                "day_low": row.get("low"),
                                 "ch55_high": row.get("ch55_high"),
                                 "ch20_low": row.get("ch20_low"),
                                 "adx_value": row.get("adx_20"),
@@ -360,6 +368,8 @@ def _run_backtest_inner(run_id: str, req: BacktestRequest, stocks: list, user_id
                         "stock_id": stock_id,
                         "trade_date": row_date,
                         "close_price": close,
+                        "day_high": row.get("high"),
+                        "day_low": row.get("low"),
                         "ch55_high": row.get("ch55_high"),
                         "ch20_low": row.get("ch20_low"),
                         "adx_value": row.get("adx_20"),
