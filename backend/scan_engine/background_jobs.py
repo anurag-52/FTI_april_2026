@@ -28,7 +28,7 @@ async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bs
         from scan_engine.data_fetcher import fetch_ohlcv_yfinance
 
         # Set status to running
-        supabase.table("stocks").update({"compute_status": "in_progress"}).eq("id", stock_id).execute()
+        supabase.table("stocks").update({"compute_status": "running"}).eq("id", stock_id).execute()
 
         # Fetch 10 years historical
         end_date = date.today()

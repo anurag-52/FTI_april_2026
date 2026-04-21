@@ -234,7 +234,7 @@ async def search_stocks(q: str, imported_only: bool = False, user=Depends(get_cu
 async def get_imported_stocks(user=Depends(get_current_user)):
     """List all stocks that have 10-year historical data ready in the central DB."""
     result = supabase.table("stocks") \
-        .select("id, ticker_nse, ticker_bse, company_name, exchange, sector, updated_at") \
+        .select("id, ticker_nse, ticker_bse, company_name, exchange, sector") \
         .eq("history_fetched", True) \
         .order("ticker_nse") \
         .execute()
