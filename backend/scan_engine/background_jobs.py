@@ -34,11 +34,10 @@ async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bs
         end_date = date.today()
         start_date = end_date - timedelta(days=3650)  # ~10 years
 
-        ticker_to_fetch = ticker_nse or ticker_bse
-        if not ticker_to_fetch:
+        if not ticker_nse and not ticker_bse:
             raise ValueError("No ticker available for fetch")
 
-        df = fetch_ohlcv_yfinance(ticker_to_fetch, start_date, end_date)
+        df = fetch_ohlcv_yfinance(ticker_nse, ticker_bse, start_date, end_date)
         if df is None or df.empty:
             raise ValueError("No data returned from yfinance")
 
