@@ -6,7 +6,7 @@ Business Rules:
 - Admin can confirm signals on behalf of any trader
 - Admin can adjust capital (all changes logged)
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import get_admin_user
