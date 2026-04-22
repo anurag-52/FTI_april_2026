@@ -30,16 +30,11 @@ async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bs
         # Set status to running
         supabase.table("stocks").update({"compute_status": "running"}).eq("id", stock_id).execute()
 
-        # Fetch 10 years historical
-        end_date = date.today()
-        start_date = end_date - timedelta(days=730)  # ~2 years for stabilization
-
-        if not ticker_nse and not ticker_bse:
-            raise ValueError("No ticker available for fetch")
-
-        df = fetch_ohlcv_yfinance(ticker_nse, ticker_bse, start_date, end_date)
+        from scan_engine.data_fetcher import fetch_historical
+        
+        df = fetch_historical(ticker_nse, ticker_bse, years=2)
         if df is None or df.empty:
-            raise ValueError("No data returned from yfinance")
+            raise ValueError("Both yfinance and NSE Bhavcopy fallback failed")
 
         # Compute
         df = compute_indicators(df)
