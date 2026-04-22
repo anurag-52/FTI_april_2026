@@ -244,22 +244,27 @@ async def get_imported_stocks(user=Depends(get_current_user)):
 @router.post("/stocks/import/{stock_id}")
 async def import_stock_data(stock_id: str, background_tasks: BackgroundTasks, user=Depends(get_current_user)):
     """Trigger a 10-year historical backfill for any stock. Resolves yfinance IDs first."""
-    from stock_resolver import resolve_stock_id
-    real_id = resolve_stock_id(stock_id)
-    
-    stock = supabase.table("stocks").select("*").eq("id", real_id).maybe_single().execute().data
-    if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
-        
-    if stock.get("history_fetched"):
-        return {"message": f"{stock.get('ticker_nse')} is already imported.", "already_done": True}
+    # We run the resolve and compute in the background to avoid frontend timeouts
+    background_tasks.add_task(_background_resolve_and_fetch, stock_id)
+    return {"message": "Request received. Starting historical hydration in background."}
 
-    from scan_engine.background_jobs import fetch_and_compute_historical
-    background_tasks.add_task(
-        fetch_and_compute_historical, 
-        stock_id=stock["id"], 
-        ticker_nse=stock.get("ticker_nse"), 
-        ticker_bse=stock.get("ticker_bse")
-    )
-    return {"message": f"Historical hydration started for {stock.get('ticker_nse')}"}
+
+async def _background_resolve_and_fetch(stock_id: str):
+    """Internal helper to resolve ID and trigger fetch without blocking the API response."""
+    try:
+        from stock_resolver import resolve_stock_id
+        from scan_engine.background_jobs import fetch_and_compute_historical
+        
+        real_id = resolve_stock_id(stock_id)
+        stock = supabase.table("stocks").select("*").eq("id", real_id).maybe_single().execute().data
+        
+        if stock and not stock.get("history_fetched"):
+            fetch_and_compute_historical(
+                stock_id=stock["id"], 
+                ticker_nse=stock.get("ticker_nse"), 
+                ticker_bse=stock.get("ticker_bse")
+            )
+            logger.info(f"Background hydration initiated for {stock.get('ticker_nse')}")
+    except Exception as e:
+        logger.error(f"Failed in background import task: {e}")
 
