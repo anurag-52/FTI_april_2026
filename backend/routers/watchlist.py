@@ -259,7 +259,7 @@ async def _background_resolve_and_fetch(stock_id: str):
         stock = supabase.table("stocks").select("*").eq("id", real_id).maybe_single().execute().data
         
         if stock and not stock.get("history_fetched"):
-            fetch_and_compute_historical(
+            await fetch_and_compute_historical(
                 stock_id=stock["id"], 
                 ticker_nse=stock.get("ticker_nse"), 
                 ticker_bse=stock.get("ticker_bse")

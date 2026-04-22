@@ -32,7 +32,7 @@ async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bs
 
         # Fetch 10 years historical
         end_date = date.today()
-        start_date = end_date - timedelta(days=3650)  # ~10 years
+        start_date = end_date - timedelta(days=730)  # ~2 years for stabilization
 
         if not ticker_nse and not ticker_bse:
             raise ValueError("No ticker available for fetch")
