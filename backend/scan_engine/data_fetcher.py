@@ -86,7 +86,9 @@ def fetch_ohlcv_yfinance(
 
     for symbol in symbols_to_try:
         try:
-            ticker = yf.Ticker(symbol)
+            session = requests.Session()
+            session.headers.update(BROWSER_HEADERS)
+            ticker = yf.Ticker(symbol, session=session)
             df = ticker.history(
                 start=from_date.strftime("%Y-%m-%d"),
                 end=(to_date + timedelta(days=1)).strftime("%Y-%m-%d"),
@@ -318,17 +320,16 @@ def fetch_stock_eod(
     return {"data": None, "source": None, "error": error}
 
 
-# ─── Historical Data Fetch (for new stocks — 10 years) ──────────────────────
+# ─── Historical Data Fetch (for new stocks — 2 years initial) ──────────────────────
 
 def fetch_historical(
     ticker_nse: Optional[str],
     ticker_bse: Optional[str],
-    years: int = 10,
+    years: int = 2,
 ) -> Optional[pd.DataFrame]:
     """
-    Fetch up to 10 years of historical OHLCV data for a newly added stock.
-    Used by background_jobs.py when a stock is first added to any watchlist.
-    Only uses yfinance (Bhavcopy archives are not reliably available for 10yr).
+    Fetch up to 2 years of historical OHLCV data for a newly added stock.
+    Reduced from 10y to 2y for faster initial stabilization.
     """
     to_date = date.today()
     from_date = to_date - timedelta(days=years * 365)
@@ -339,7 +340,28 @@ def fetch_historical(
             f"Historical fetch: {len(df)} rows for "
             f"{ticker_nse or ticker_bse} from {from_date} to {to_date}"
         )
-    return df
+        return df
+
+    # Fallback to NSE Bhavcopy if yfinance fails
+    logger.warning(f"yfinance failed for {ticker_nse or ticker_bse}; attempting NSE Bhavcopy fallback")
+    all_records = []
+    current = from_date
+    while current <= to_date:
+        # Skip weekends (weekday 5=Saturday,6=Sunday)
+        if current.weekday() < 5:
+            bhav_df = fetch_nse_bhavcopy(current)
+            if bhav_df is not None:
+                rows = bhav_df[bhav_df["ticker"] == (ticker_nse or ticker_bse)]
+                if not rows.empty:
+                    all_records.append(rows)
+        current += timedelta(days=1)
+    if all_records:
+        df = pd.concat(all_records, ignore_index=True)
+        logger.info(f"Fallback Bhavcopy fetch succeeded: {len(df)} rows for {ticker_nse or ticker_bse}")
+        return df
+
+    logger.error(f"Both yfinance and NSE Bhavcopy failed for {ticker_nse or ticker_bse}")
+    return None
 
 
 # ─── Get existing price history from DB ─────────────────────────────────────
