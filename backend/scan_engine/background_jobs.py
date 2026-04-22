@@ -32,7 +32,7 @@ async def fetch_and_compute_historical(stock_id: str, ticker_nse: str, ticker_bs
 
         from scan_engine.data_fetcher import fetch_historical
         
-        df = fetch_historical(ticker_nse, ticker_bse, years=2)
+        df = fetch_historical(ticker_nse, ticker_bse, years=10)
         if df is None or df.empty:
             raise ValueError("Both yfinance and NSE Bhavcopy fallback failed")
 

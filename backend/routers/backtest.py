@@ -114,7 +114,7 @@ async def get_backtest_daily_log(run_id: str, user=Depends(get_current_user)):
         .execute().data or []
         
     raw_prices = supabase.table("stock_prices") \
-        .select("price_date, stock_id, close, ch55_high, ch55_low, ch20_high, ch20_low, adx_20, adx_rising, ch55_high_flat_days") \
+        .select("price_date, stock_id, close, high, low, ch55_high, ch55_low, ch20_high, ch20_low, adx_20, adx_rising, ch55_high_flat_days, buy_signal, any_exit_signal") \
         .in_("stock_id", run["stock_ids"]) \
         .gte("price_date", run["from_date"]) \
         .lte("price_date", run["to_date"]) \
